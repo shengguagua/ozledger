@@ -1,0 +1,5 @@
+{
+  "name": "OzLedger",
+  "description": "A specialized dual-currency (AUD/CNY) ledger for Australian international students, featuring real-time exchange rate calculation and local storage persistence.",
+  "requestFramePermissions": []
+}
