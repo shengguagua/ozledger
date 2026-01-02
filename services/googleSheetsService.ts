@@ -1,5 +1,5 @@
 
-import { Transaction, Account } from '../types';
+import { Transaction, Account, AssetSnapshot } from '../types';
 
 declare global {
   interface Window {
@@ -73,26 +73,22 @@ export const handleAuthClick = (callback: (token: any) => void) => {
   };
 
   if (window.gapi.client.getToken() === null) {
-    // Prompt the user to select a Google Account and ask for consent to share their data
     tokenClient.requestAccessToken({ prompt: 'consent' });
   } else {
-    // Skip display of account chooser and consent dialog for an existing session
     tokenClient.requestAccessToken({ prompt: '' });
   }
 };
 
 const ensureSheetsExist = async (spreadsheetId: string) => {
   try {
-    // 1. Get current spreadsheet structure
     const meta = await window.gapi.client.sheets.spreadsheets.get({
       spreadsheetId
     });
     
     const existingTitles = meta.result.sheets.map((s: any) => s.properties.title);
-    const requiredSheets = ['Transactions', 'Accounts', 'Settings'];
+    const requiredSheets = ['Transactions', 'Accounts', 'Settings', 'Snapshots'];
     const requests: any[] = [];
 
-    // 2. Check for missing sheets
     requiredSheets.forEach(title => {
       if (!existingTitles.includes(title)) {
         requests.push({
@@ -103,7 +99,6 @@ const ensureSheetsExist = async (spreadsheetId: string) => {
       }
     });
 
-    // 3. Create missing sheets if necessary
     if (requests.length > 0) {
       await window.gapi.client.sheets.spreadsheets.batchUpdate({
         spreadsheetId,
@@ -120,27 +115,30 @@ export const saveToCloud = async (
   spreadsheetId: string, 
   transactions: Transaction[], 
   accounts: Account[],
+  snapshots: AssetSnapshot[],
   settings: { exchangeRate: number; usdRate: number; note: string }
 ) => {
   try {
-    // Step 0: Ensure tabs exist
     await ensureSheetsExist(spreadsheetId);
 
-    // Step 1: Prepare Data for Transactions Sheet
     const txHeaders = ['ID', 'Date', 'Type', 'Amount', 'Currency', 'Category', 'Account', 'ToAccount', 'Note'];
     const txRows = transactions.map(t => [
       t.id, t.date, t.type, t.amount, t.currency, t.categoryId, t.accountId, t.toAccountId || '', t.note || ''
     ]);
     const txData = [txHeaders, ...txRows];
 
-    // Step 2: Prepare Data for Accounts Sheet
     const accHeaders = ['ID', 'Name', 'Owner', 'Type', 'Currency', 'InitialBalance', 'IconName', 'Color'];
     const accRows = accounts.map(a => [
       a.id, a.name, a.owner, a.type, a.currency, a.initialBalance, a.iconName, a.color || ''
     ]);
     const accData = [accHeaders, ...accRows];
 
-    // Step 3: Prepare Data for Settings Sheet
+    const snapHeaders = ['ID', 'Date', 'TotalCNY', 'Note', 'IsDeleted'];
+    const snapRows = snapshots.map(s => [
+      s.id, s.date, s.totalCNY, s.note || '', s.isDeleted ? 'TRUE' : 'FALSE'
+    ]);
+    const snapData = [snapHeaders, ...snapRows];
+
     const setHeaders = ['Key', 'Value'];
     const setRows = [
       ['ExchangeRate', settings.exchangeRate],
@@ -153,6 +151,7 @@ export const saveToCloud = async (
       data: [
         { range: 'Transactions!A1', values: txData },
         { range: 'Accounts!A1', values: accData },
+        { range: 'Snapshots!A1', values: snapData },
         { range: 'Settings!A1', values: setData }
       ],
       valueInputOption: 'USER_ENTERED'
@@ -171,17 +170,15 @@ export const saveToCloud = async (
 
 export const loadFromCloud = async (spreadsheetId: string) => {
   try {
-    // Check if sheets exist first to avoid 400 error on download from blank sheet
     await ensureSheetsExist(spreadsheetId);
 
     const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
       spreadsheetId: spreadsheetId,
-      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B']
+      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B', 'Snapshots!A2:E']
     });
 
     const valueRanges = response.result.valueRanges;
     
-    // Parse Transactions
     const txData = valueRanges[0].values || [];
     const transactions: Transaction[] = txData.map((row: any[]) => ({
       id: row[0],
@@ -195,7 +192,6 @@ export const loadFromCloud = async (spreadsheetId: string) => {
       note: row[8] || ''
     }));
 
-    // Parse Accounts
     const accData = valueRanges[1].values || [];
     const accounts: Account[] = accData.map((row: any[]) => ({
       id: row[0],
@@ -208,7 +204,15 @@ export const loadFromCloud = async (spreadsheetId: string) => {
       color: row[7] || undefined
     }));
 
-    // Parse Settings
+    const snapData = valueRanges[3] ? (valueRanges[3].values || []) : [];
+    const snapshots: AssetSnapshot[] = snapData.map((row: any[]) => ({
+      id: row[0],
+      date: row[1],
+      totalCNY: parseFloat(row[2]),
+      note: row[3] || '',
+      isDeleted: row[4] === 'TRUE'
+    }));
+
     const setData = valueRanges[2].values || [];
     const settings = {
       exchangeRate: 4.5,
@@ -222,7 +226,7 @@ export const loadFromCloud = async (spreadsheetId: string) => {
       if (row[0] === 'Note') settings.note = row[1] || '';
     });
 
-    return { transactions, accounts, settings };
+    return { transactions, accounts, settings, snapshots };
 
   } catch (e) {
     console.error("Download Error", e);

@@ -1,48 +1,51 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AssetSnapshot } from '../types';
-import * as storage from '../services/storageService';
 import { LineChart, Camera, ArrowUpRight, ArrowDownRight, Trash2, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
   currentTotalCNY: number;
+  snapshots: AssetSnapshot[];
+  onSnapshotsChange: (snapshots: AssetSnapshot[]) => void;
 }
 
-const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY }) => {
-  const [snapshots, setSnapshots] = useState<AssetSnapshot[]>([]);
+const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, snapshots, onSnapshotsChange }) => {
   const [note, setNote] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
 
-  useEffect(() => { setSnapshots(storage.getStoredSnapshots()); }, []);
-
   const handleSnapshot = () => {
     const today = new Date().toISOString().split('T')[0];
     const newSnapshot: AssetSnapshot = {
-      id: crypto.randomUUID(), date: today, totalCNY: currentTotalCNY, note: note || 'Snapshot', isDeleted: false
+      id: crypto.randomUUID(), 
+      date: today, 
+      totalCNY: currentTotalCNY, 
+      note: note || 'Snapshot', 
+      isDeleted: false
     };
+    
+    // Logic: If there's an active snapshot today, replace it. If deleted, keep it.
     const filtered = snapshots.filter(s => s.date !== today || s.isDeleted);
     const updated = [newSnapshot, ...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setSnapshots(updated);
-    storage.saveStoredSnapshots(updated);
+    onSnapshotsChange(updated);
     setNote('');
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Move to trash?')) {
       const updated = snapshots.map(s => s.id === id ? { ...s, isDeleted: true } : s);
-      setSnapshots(updated);
-      storage.saveStoredSnapshots(updated);
+      onSnapshotsChange(updated);
     }
   };
 
   const handleRestore = (id: string) => {
     const updated = snapshots.map(s => s.id === id ? { ...s, isDeleted: false } : s);
-    setSnapshots(updated);
-    storage.saveStoredSnapshots(updated);
+    onSnapshotsChange(updated);
   };
 
-  const visibleSnapshots = snapshots.filter(s => showTrash ? s.isDeleted : !s.isDeleted).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const visibleSnapshots = snapshots
+    .filter(s => showTrash ? s.isDeleted : !s.isDeleted)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6 mb-8">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Transaction, Account, AccountOwner, GoogleConfig } from './types';
+import { Transaction, Account, AccountOwner, GoogleConfig, AssetSnapshot } from './types';
 import { DEFAULT_EXCHANGE_RATE, getIconComponent } from './constants';
 import * as storage from './services/storageService';
 import * as googleSheetService from './services/googleSheetsService';
@@ -14,6 +14,7 @@ import { Download, Plus, RotateCcw, Wallet, ChevronDown, ChevronUp, FileText, Up
 const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [snapshots, setSnapshots] = useState<AssetSnapshot[]>([]);
   const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_EXCHANGE_RATE);
   const [usdRate, setUsdRate] = useState<number>(1.5);
   const [financialNote, setFinancialNote] = useState<string>('');
@@ -39,6 +40,7 @@ const App: React.FC = () => {
     setExchangeRate(storage.getStoredRate());
     setUsdRate(storage.getStoredUSDRate());
     setAccounts(storage.getStoredAccounts());
+    setSnapshots(storage.getStoredSnapshots());
     setFinancialNote(storage.getStoredNotes());
     setGoogleConfig(storage.getGoogleConfig());
   }, []);
@@ -91,6 +93,11 @@ const App: React.FC = () => {
     storage.saveStoredAccounts(updatedAccounts);
   };
 
+  const handleSaveSnapshots = (updatedSnapshots: AssetSnapshot[]) => {
+    setSnapshots(updatedSnapshots);
+    storage.saveStoredSnapshots(updatedSnapshots);
+  };
+
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setFinancialNote(val);
@@ -116,9 +123,9 @@ const App: React.FC = () => {
       setIsSyncing(true);
       setSyncStatus('正在登录...');
       await googleSheetService.handleAuthClick(async () => {
-         setSyncStatus('正在检查表格...');
+         setSyncStatus('正在同步...');
          await googleSheetService.saveToCloud(
-           googleConfig.spreadsheetId, transactions, accounts, { exchangeRate, usdRate, note: financialNote }
+           googleConfig.spreadsheetId, transactions, accounts, snapshots, { exchangeRate, usdRate, note: financialNote }
          );
          setSyncStatus('上传成功');
          setTimeout(() => setSyncStatus('Google 服务已就绪'), 3000);
@@ -138,18 +145,23 @@ const App: React.FC = () => {
       setIsSyncing(true);
       setSyncStatus('正在登录...');
       await googleSheetService.handleAuthClick(async () => {
-        setSyncStatus('正在下载...');
+        setSyncStatus('正在同步...');
         const data = await googleSheetService.loadFromCloud(googleConfig.spreadsheetId);
+        
         setTransactions(data.transactions);
         setAccounts(data.accounts);
+        setSnapshots(data.snapshots);
         setExchangeRate(data.settings.exchangeRate);
         setUsdRate(data.settings.usdRate);
         setFinancialNote(data.settings.note);
+        
         storage.saveStoredTransactions(data.transactions);
         storage.saveStoredAccounts(data.accounts);
+        storage.saveStoredSnapshots(data.snapshots);
         storage.saveStoredRate(data.settings.exchangeRate);
         storage.saveStoredUSDRate(data.settings.usdRate);
         storage.saveStoredNotes(data.settings.note);
+        
         setSyncStatus('同步成功');
         setTimeout(() => setSyncStatus('Google 服务已就绪'), 3000);
       });
@@ -171,7 +183,7 @@ const App: React.FC = () => {
   };
 
   const handleExportJSON = () => {
-    const data = { transactions, accounts, exchangeRate, usdRate, financialNote, exportDate: new Date().toISOString() };
+    const data = { transactions, accounts, snapshots, exchangeRate, usdRate, financialNote, exportDate: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -192,11 +204,14 @@ const App: React.FC = () => {
         if (window.confirm(`确认导入 ${json.transactions.length} 条交易记录和账户配置吗？当前数据将被覆盖。`)) {
           setTransactions(json.transactions);
           setAccounts(json.accounts);
+          if (json.snapshots) setSnapshots(json.snapshots);
           if (json.exchangeRate) setExchangeRate(json.exchangeRate);
           if (json.usdRate) setUsdRate(json.usdRate);
           if (json.financialNote) setFinancialNote(json.financialNote);
+          
           storage.saveStoredTransactions(json.transactions);
           storage.saveStoredAccounts(json.accounts);
+          if (json.snapshots) storage.saveStoredSnapshots(json.snapshots);
           if (json.exchangeRate) storage.saveStoredRate(json.exchangeRate);
           if (json.usdRate) storage.saveStoredUSDRate(json.usdRate);
           if (json.financialNote) storage.saveStoredNotes(json.financialNote);
@@ -274,7 +289,6 @@ const App: React.FC = () => {
   const openFormForAccount = (accId: string) => { setSelectedAccountId(accId); setIsTxFormOpen(true); };
   const toggleAccordion = (owner: string) => { setExpandedOwner(expandedOwner === owner ? null : owner); };
 
-  // --- RENDER HELPERS ---
   const renderAccountGrid = (accList: Account[], label: string) => {
     if (!accList || accList.length === 0) return null;
     return (
@@ -331,7 +345,6 @@ const App: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
-        {/* Settings Modal */}
         {isSettingsOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto no-scrollbar flex flex-col">
@@ -388,7 +401,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- GRID LAYOUT --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* LEFT: Assets */}
@@ -484,7 +496,11 @@ const App: React.FC = () => {
                   </div>
               </div>
 
-              <AssetHistoryPanel currentTotalCNY={calculateTotalCNY()} />
+              <AssetHistoryPanel 
+                currentTotalCNY={calculateTotalCNY()} 
+                snapshots={snapshots}
+                onSnapshotsChange={handleSaveSnapshots}
+              />
 
               <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-soft">
                  <div className="flex items-center gap-2 mb-4 text-slate-500">

@@ -24,7 +24,6 @@ const TopDashboard: React.FC<Props> = ({
 }) => {
   const [showBalance, setShowBalance] = useState(true);
 
-  // Helper for currency conversion
   const convertAmount = (amount: number, fromCurrency: string, toCurrency: string) => {
     if (fromCurrency === toCurrency) return amount;
     let amountInAUD = amount;
@@ -91,27 +90,24 @@ const TopDashboard: React.FC<Props> = ({
 
   return (
     <div className="relative mb-8">
-      {/* Background with Gradient Mesh */}
       <div className="bg-[#0f172a] pt-6 pb-20 lg:pt-8 lg:pb-24 px-4 relative overflow-hidden">
          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none"></div>
          <div className="absolute bottom-0 right-0 w-[500px] h-[300px] bg-teal-600/10 rounded-full blur-[80px] pointer-events-none"></div>
 
          <div className="max-w-7xl mx-auto relative z-10 text-white">
             
-            {/* Navbar */}
             <div className="flex justify-between items-center mb-10">
                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white">
                      <Wallet size={20} strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold tracking-tight leading-none">Sheng & Wang</h1>
-                    <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mt-1">Family Wealth</p>
+                    <h1 className="text-xl font-bold tracking-tight leading-none uppercase">Family Wealth</h1>
+                    <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mt-1">Dual Currency Ledger</p>
                   </div>
                </div>
 
                <div className="flex items-center gap-3">
-                   {/* Rates */}
                    <div className="hidden sm:flex bg-white/5 backdrop-blur-md rounded-full px-1.5 py-1.5 border border-white/5 items-center gap-4">
                        <div className="flex items-center gap-2 pl-2">
                           <span className="text-[10px] font-bold text-slate-400 uppercase">CNY Rate</span>
@@ -138,7 +134,6 @@ const TopDashboard: React.FC<Props> = ({
                </div>
             </div>
 
-            {/* Main Stats Area - Centered & Clean */}
             <div className="flex flex-col items-center justify-center text-center space-y-2">
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-sm text-indigo-200 text-xs font-medium tracking-wide">
                    <TrendingUp size={12} />
@@ -167,11 +162,9 @@ const TopDashboard: React.FC<Props> = ({
          </div>
       </div>
 
-      {/* Floating Info Cards - Overlapping the Header */}
       <div className="max-w-4xl mx-auto px-4 -mt-12 relative z-20">
          {showBalance && (
             <div className="grid grid-cols-2 gap-4">
-               {/* Card 1 */}
                <div className="bg-white rounded-3xl p-5 shadow-soft border border-slate-100 flex items-center justify-between group hover:border-indigo-100 transition-colors">
                   <div>
                      <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Local Liquid (AUD)</p>
@@ -184,7 +177,6 @@ const TopDashboard: React.FC<Props> = ({
                   </div>
                </div>
 
-               {/* Card 2 */}
                <div className="bg-white rounded-3xl p-5 shadow-soft border border-slate-100 flex items-center justify-between group hover:border-emerald-100 transition-colors">
                   <div>
                      <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Global Liquid (Total)</p>
