@@ -37,12 +37,20 @@ export interface Transaction {
   date: string; // ISO string
 }
 
+export interface HistoricalAccountDetail {
+  name: string;
+  balance: number;
+  currency: Currency;
+  owner: AccountOwner;
+}
+
 export interface AssetSnapshot {
   id: string;
   date: string; // YYYY-MM-DD
   totalCNY: number;
   note?: string;
-  isDeleted?: boolean; // New field for logical deletion
+  isDeleted?: boolean;
+  accountDetails?: HistoricalAccountDetail[];
 }
 
 export interface GoogleConfig {

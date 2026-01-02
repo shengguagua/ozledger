@@ -1,18 +1,20 @@
 
 import React, { useState } from 'react';
-import { AssetSnapshot } from '../types';
-import { LineChart, Camera, ArrowUpRight, ArrowDownRight, Trash2, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { AssetSnapshot, HistoricalAccountDetail } from '../types';
+import { LineChart, Camera, ArrowUpRight, ArrowDownRight, Trash2, RotateCcw, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 interface Props {
   currentTotalCNY: number;
+  getCurrentDetails: () => HistoricalAccountDetail[];
   snapshots: AssetSnapshot[];
   onSnapshotsChange: (snapshots: AssetSnapshot[]) => void;
 }
 
-const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, snapshots, onSnapshotsChange }) => {
+const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, getCurrentDetails, snapshots, onSnapshotsChange }) => {
   const [note, setNote] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  const [expandedSnapId, setExpandedSnapId] = useState<string | null>(null);
 
   const handleSnapshot = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -21,10 +23,11 @@ const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, snapshots, onSnap
       date: today, 
       totalCNY: currentTotalCNY, 
       note: note || 'Snapshot', 
-      isDeleted: false
+      isDeleted: false,
+      accountDetails: getCurrentDetails()
     };
     
-    // Logic: If there's an active snapshot today, replace it. If deleted, keep it.
+    // Replace today's active snapshot or add new
     const filtered = snapshots.filter(s => s.date !== today || s.isDeleted);
     const updated = [newSnapshot, ...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     onSnapshotsChange(updated);
@@ -41,6 +44,10 @@ const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, snapshots, onSnap
   const handleRestore = (id: string) => {
     const updated = snapshots.map(s => s.id === id ? { ...s, isDeleted: false } : s);
     onSnapshotsChange(updated);
+  };
+
+  const toggleSnapExpand = (id: string) => {
+    setExpandedSnapId(expandedSnapId === id ? null : id);
   };
 
   const visibleSnapshots = snapshots
@@ -91,29 +98,69 @@ const AssetHistoryPanel: React.FC<Props> = ({ currentTotalCNY, snapshots, onSnap
             isGrowth = diff >= 0;
           }
 
+          const isHistoricalExpanded = expandedSnapId === snap.id;
+
           return (
-            <div key={snap.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all border-b border-slate-50 last:border-0">
-               <div>
-                 <div className="flex items-center gap-2 mb-1">
-                   <span className="font-mono font-bold text-slate-700 text-xs">{snap.date}</span>
-                   {snap.note && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded truncate max-w-[100px]">{snap.note}</span>}
+            <div key={snap.id} className="group border-b border-slate-50 last:border-0">
+               <div className={`flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer hover:bg-slate-50 ${isHistoricalExpanded ? 'bg-slate-50' : ''}`} onClick={() => toggleSnapExpand(snap.id)}>
+                 <div className="flex items-center gap-3">
+                    <div className={`p-1.5 rounded-lg transition-transform ${isHistoricalExpanded ? 'rotate-180 bg-white shadow-sm' : 'text-slate-300'}`}>
+                       <ChevronDown size={14} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-bold text-slate-700 text-xs">{snap.date}</span>
+                        {snap.note && <span className="text-[10px] bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-100 truncate max-w-[100px]">{snap.note}</span>}
+                      </div>
+                      <div className="text-sm font-bold text-slate-800 font-mono">¥{snap.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+                    </div>
                  </div>
-                 <div className="text-sm font-bold text-slate-800 font-mono">¥{snap.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+
+                 <div className="flex items-center gap-4">
+                   {!showTrash && nextSnap && (
+                     <div className={`text-right ${isGrowth ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <div className="flex items-center justify-end gap-0.5 text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border border-slate-100">
+                          {isGrowth ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
+                          {Math.abs(percent).toFixed(1)}%
+                        </div>
+                     </div>
+                   )}
+                   <button onClick={(e) => { e.stopPropagation(); showTrash ? handleRestore(snap.id) : handleDelete(snap.id); }} className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all ${showTrash ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}>
+                     {showTrash ? <RotateCcw size={14}/> : <Trash2 size={14} />}
+                   </button>
+                 </div>
                </div>
 
-               <div className="flex items-center gap-4">
-                 {!showTrash && nextSnap && (
-                   <div className={`text-right ${isGrowth ? 'text-emerald-600' : 'text-red-500'}`}>
-                      <div className="flex items-center justify-end gap-0.5 text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border border-slate-100">
-                        {isGrowth ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
-                        {Math.abs(percent).toFixed(1)}%
-                      </div>
-                   </div>
-                 )}
-                 <button onClick={() => showTrash ? handleRestore(snap.id) : handleDelete(snap.id)} className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all ${showTrash ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}>
-                   {showTrash ? <RotateCcw size={14}/> : <Trash2 size={14} />}
-                 </button>
-               </div>
+               {/* Snapshot Details Expansion */}
+               {isHistoricalExpanded && snap.accountDetails && (
+                 <div className="p-4 bg-slate-50/50 rounded-b-xl border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
+                    <div className="space-y-3">
+                       {['小盛', '大王', '家庭'].map(owner => {
+                          const ownerDetails = snap.accountDetails?.filter(d => d.owner === owner) || [];
+                          if (ownerDetails.length === 0) return null;
+                          return (
+                            <div key={owner}>
+                               <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">{owner}</h5>
+                               <div className="grid grid-cols-1 gap-1.5">
+                                  {ownerDetails.map((d, i) => {
+                                     const isLiability = d.name.includes('花呗') || d.name.includes('信用卡'); // Simplistic check for historical display
+                                     const currencySymbol = d.currency === 'AUD' ? '$' : d.currency === 'CNY' ? '¥' : 'U$';
+                                     return (
+                                        <div key={i} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100/50 text-[11px]">
+                                           <span className="text-slate-600 font-medium">{d.name}</span>
+                                           <span className={`font-mono font-bold ${isLiability && d.balance > 0 ? 'text-red-400' : 'text-slate-700'}`}>
+                                              {currencySymbol}{d.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                           </span>
+                                        </div>
+                                     )
+                                  })}
+                               </div>
+                            </div>
+                          )
+                       })}
+                    </div>
+                 </div>
+               )}
             </div>
           )
         })}

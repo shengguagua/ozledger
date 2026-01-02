@@ -1,5 +1,5 @@
 
-import { Transaction, Account, AssetSnapshot } from '../types';
+import { Transaction, Account, AssetSnapshot, HistoricalAccountDetail } from '../types';
 
 declare global {
   interface Window {
@@ -86,7 +86,7 @@ const ensureSheetsExist = async (spreadsheetId: string) => {
     });
     
     const existingTitles = meta.result.sheets.map((s: any) => s.properties.title);
-    const requiredSheets = ['Transactions', 'Accounts', 'Settings', 'Snapshots'];
+    const requiredSheets = ['Transactions', 'Accounts', 'Settings', 'Snapshots', 'SnapshotDetails'];
     const requests: any[] = [];
 
     requiredSheets.forEach(title => {
@@ -139,6 +139,17 @@ export const saveToCloud = async (
     ]);
     const snapData = [snapHeaders, ...snapRows];
 
+    const detailHeaders = ['SnapshotID', 'AccountName', 'Owner', 'Balance', 'Currency'];
+    const detailRows: any[] = [];
+    snapshots.forEach(s => {
+      if (s.accountDetails) {
+        s.accountDetails.forEach(d => {
+          detailRows.push([s.id, d.name, d.owner, d.balance, d.currency]);
+        });
+      }
+    });
+    const detailData = [detailHeaders, ...detailRows];
+
     const setHeaders = ['Key', 'Value'];
     const setRows = [
       ['ExchangeRate', settings.exchangeRate],
@@ -152,6 +163,7 @@ export const saveToCloud = async (
         { range: 'Transactions!A1', values: txData },
         { range: 'Accounts!A1', values: accData },
         { range: 'Snapshots!A1', values: snapData },
+        { range: 'SnapshotDetails!A1', values: detailData },
         { range: 'Settings!A1', values: setData }
       ],
       valueInputOption: 'USER_ENTERED'
@@ -174,7 +186,7 @@ export const loadFromCloud = async (spreadsheetId: string) => {
 
     const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
       spreadsheetId: spreadsheetId,
-      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B', 'Snapshots!A2:E']
+      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B', 'Snapshots!A2:E', 'SnapshotDetails!A2:E']
     });
 
     const valueRanges = response.result.valueRanges;
@@ -204,13 +216,27 @@ export const loadFromCloud = async (spreadsheetId: string) => {
       color: row[7] || undefined
     }));
 
+    const detailsData = valueRanges[4] ? (valueRanges[4].values || []) : [];
+    const detailsMap: Record<string, HistoricalAccountDetail[]> = {};
+    detailsData.forEach((row: any[]) => {
+      const snapId = row[0];
+      if (!detailsMap[snapId]) detailsMap[snapId] = [];
+      detailsMap[snapId].push({
+        name: row[1],
+        owner: row[2] as any,
+        balance: parseFloat(row[3]),
+        currency: row[4] as any
+      });
+    });
+
     const snapData = valueRanges[3] ? (valueRanges[3].values || []) : [];
     const snapshots: AssetSnapshot[] = snapData.map((row: any[]) => ({
       id: row[0],
       date: row[1],
       totalCNY: parseFloat(row[2]),
       note: row[3] || '',
-      isDeleted: row[4] === 'TRUE'
+      isDeleted: row[4] === 'TRUE',
+      accountDetails: detailsMap[row[0]] || []
     }));
 
     const setData = valueRanges[2].values || [];

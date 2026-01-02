@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Transaction, Account, AccountOwner, GoogleConfig, AssetSnapshot } from './types';
+import { Transaction, Account, AccountOwner, GoogleConfig, AssetSnapshot, HistoricalAccountDetail } from './types';
 import { DEFAULT_EXCHANGE_RATE, getIconComponent } from './constants';
 import * as storage from './services/storageService';
 import * as googleSheetService from './services/googleSheetsService';
@@ -286,6 +286,15 @@ const App: React.FC = () => {
     return totalAUD * exchangeRate;
   }
 
+  const getCurrentDetails = (): HistoricalAccountDetail[] => {
+    return accounts.map(acc => ({
+      name: acc.name,
+      owner: acc.owner,
+      balance: getAccountBalance(acc.id),
+      currency: acc.currency
+    }));
+  };
+
   const openFormForAccount = (accId: string) => { setSelectedAccountId(accId); setIsTxFormOpen(true); };
   const toggleAccordion = (owner: string) => { setExpandedOwner(expandedOwner === owner ? null : owner); };
 
@@ -498,6 +507,7 @@ const App: React.FC = () => {
 
               <AssetHistoryPanel 
                 currentTotalCNY={calculateTotalCNY()} 
+                getCurrentDetails={getCurrentDetails}
                 snapshots={snapshots}
                 onSnapshotsChange={handleSaveSnapshots}
               />
