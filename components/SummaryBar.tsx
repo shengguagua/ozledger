@@ -103,7 +103,6 @@ const TopDashboard: React.FC<Props> = ({
                   </div>
                   <div>
                     <h1 className="text-xl font-bold tracking-tight leading-none uppercase">Family Wealth</h1>
-                    <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mt-1">Dual Currency Ledger</p>
                   </div>
                </div>
 
