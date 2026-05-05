@@ -116,7 +116,7 @@ export const saveToCloud = async (
   transactions: Transaction[], 
   accounts: Account[],
   snapshots: AssetSnapshot[],
-  settings: { exchangeRate: number; usdRate: number; note: string }
+  settings: { exchangeRate: number; usdRate: number; note: string; updatedAt?: string; cloudPreferred?: boolean }
 ) => {
   try {
     await ensureSheetsExist(spreadsheetId);
@@ -139,12 +139,12 @@ export const saveToCloud = async (
     ]);
     const snapData = [snapHeaders, ...snapRows];
 
-    const detailHeaders = ['SnapshotID', 'AccountName', 'Owner', 'Balance', 'Currency'];
+    const detailHeaders = ['SnapshotID', 'AccountID', 'AccountName', 'Owner', 'Type', 'Balance', 'Currency'];
     const detailRows: any[] = [];
     snapshots.forEach(s => {
       if (s.accountDetails) {
         s.accountDetails.forEach(d => {
-          detailRows.push([s.id, d.name, d.owner, d.balance, d.currency]);
+          detailRows.push([s.id, d.accountId, d.name, d.owner, d.type, d.balance, d.currency]);
         });
       }
     });
@@ -154,7 +154,9 @@ export const saveToCloud = async (
     const setRows = [
       ['ExchangeRate', settings.exchangeRate],
       ['USDRate', settings.usdRate],
-      ['Note', settings.note]
+      ['Note', settings.note],
+      ['UpdatedAt', settings.updatedAt || new Date().toISOString()],
+      ['CloudPreferred', settings.cloudPreferred ? 'TRUE' : 'FALSE'],
     ];
     const setData = [setHeaders, ...setRows];
 
@@ -186,7 +188,7 @@ export const loadFromCloud = async (spreadsheetId: string) => {
 
     const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
       spreadsheetId: spreadsheetId,
-      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B', 'Snapshots!A2:E', 'SnapshotDetails!A2:E']
+      ranges: ['Transactions!A2:I', 'Accounts!A2:H', 'Settings!A2:B', 'Snapshots!A2:E', 'SnapshotDetails!A2:G']
     });
 
     const valueRanges = response.result.valueRanges;
@@ -221,11 +223,14 @@ export const loadFromCloud = async (spreadsheetId: string) => {
     detailsData.forEach((row: any[]) => {
       const snapId = row[0];
       if (!detailsMap[snapId]) detailsMap[snapId] = [];
+      const isNewFormat = row.length >= 7;
       detailsMap[snapId].push({
-        name: row[1],
-        owner: row[2] as any,
-        balance: parseFloat(row[3]),
-        currency: row[4] as any
+        accountId: isNewFormat ? row[1] : row[1],
+        name: isNewFormat ? row[2] : row[1],
+        owner: (isNewFormat ? row[3] : row[2]) as any,
+        type: (isNewFormat ? row[4] : 'bank') as any,
+        balance: parseFloat(isNewFormat ? row[5] : row[3]),
+        currency: (isNewFormat ? row[6] : row[4]) as any
       });
     });
 
@@ -243,13 +248,17 @@ export const loadFromCloud = async (spreadsheetId: string) => {
     const settings = {
       exchangeRate: 4.5,
       usdRate: 1.5,
-      note: ''
+      note: '',
+      updatedAt: '',
+      cloudPreferred: true,
     };
     
     setData.forEach((row: any[]) => {
       if (row[0] === 'ExchangeRate') settings.exchangeRate = parseFloat(row[1]);
       if (row[0] === 'USDRate') settings.usdRate = parseFloat(row[1]);
       if (row[0] === 'Note') settings.note = row[1] || '';
+      if (row[0] === 'UpdatedAt') settings.updatedAt = row[1] || '';
+      if (row[0] === 'CloudPreferred') settings.cloudPreferred = row[1] !== 'FALSE';
     });
 
     return { transactions, accounts, settings, snapshots };

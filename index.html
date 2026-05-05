@@ -5,12 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="referrer" content="no-referrer-when-downgrade" />
-    <title>Sheng & Wang - 家庭账本</title>
+    <title>OZLedger - 余额快照账本</title>
     
     <!-- Preconnect for fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CDN (Keep as is for simplicity) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,20 +18,24 @@
       tailwind.config = {
         theme: {
           fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+            display: ['Space Grotesk', 'Manrope', 'sans-serif'],
             mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
           },
           extend: {
             colors: {
-              'brand-navy': '#0f172a',
-              'brand-primary': '#4f46e5',
-              'brand-success': '#10b981',
-              'brand-bg': '#f1f5f9',
+              'brand-navy': '#163126',
+              'brand-primary': '#2f6b52',
+              'brand-success': '#3f8f6c',
+              'brand-bg': '#f5f1e8',
               'surface': '#ffffff',
+              'brand-paper': '#fffdf7',
+              'brand-ink': '#1f2937',
+              'brand-gold': '#c8963e',
             },
             boxShadow: {
-              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px rgba(79, 70, 229, 0.3)',
+              'soft': '0 20px 45px -28px rgba(34, 48, 39, 0.28)',
+              'glow': '0 0 18px rgba(47, 107, 82, 0.18)',
             }
           }
         }
@@ -41,7 +45,14 @@
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-      body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background:
+          radial-gradient(circle at top left, rgba(200, 150, 62, 0.12), transparent 32%),
+          radial-gradient(circle at top right, rgba(47, 107, 82, 0.12), transparent 28%),
+          linear-gradient(180deg, #fcfaf4 0%, #f5f1e8 100%);
+      }
     </style>
     
     <!-- Google API -->
@@ -63,6 +74,6 @@
   <body class="bg-brand-bg text-slate-800 antialiased selection:bg-brand-primary selection:text-white">
     <div id="root"></div>
     <!-- Point to the local entry file -->
-    <script type="module" src="/src/index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

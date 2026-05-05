@@ -38,16 +38,21 @@ export interface Transaction {
 }
 
 export interface HistoricalAccountDetail {
+  accountId: string;
   name: string;
   balance: number;
   currency: Currency;
   owner: AccountOwner;
+  type: AccountType;
+  sortIndex?: number;
 }
 
 export interface AssetSnapshot {
   id: string;
   date: string; // YYYY-MM-DD
   totalCNY: number;
+  exchangeRate?: number;
+  usdRate?: number;
   note?: string;
   isDeleted?: boolean;
   accountDetails?: HistoricalAccountDetail[];
@@ -57,4 +62,47 @@ export interface GoogleConfig {
   apiKey: string;
   clientId: string;
   spreadsheetId: string;
+}
+
+export type SyncDirection = 'upload' | 'download';
+
+export interface SyncMetadata {
+  lastSyncedAt?: string;
+  lastDirection?: SyncDirection;
+  spreadsheetId?: string;
+}
+
+export interface PersistenceSettings {
+  cloudPreferred: boolean;
+}
+
+export interface AppSettings {
+  exchangeRate: number;
+  usdRate: number;
+  financialNote: string;
+  lastSavedAt?: string;
+  storageMode?: string;
+}
+
+export interface AppMeta {
+  dbPath?: string;
+  accountCount?: number;
+  snapshotCount?: number;
+}
+
+export interface AppStatePayload {
+  accounts: Account[];
+  snapshots: AssetSnapshot[];
+  transactions: Transaction[];
+  settings: AppSettings;
+  meta?: AppMeta;
+}
+
+export interface BackupHistoryEntry {
+  id: string;
+  createdAt: string;
+  actionType: string;
+  summary: string;
+  backupPath?: string;
+  fileName?: string;
 }

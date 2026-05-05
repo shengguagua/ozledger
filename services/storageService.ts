@@ -1,5 +1,5 @@
 
-import { Transaction, Account, AssetSnapshot, GoogleConfig } from '../types';
+import { Transaction, Account, AssetSnapshot, GoogleConfig, PersistenceSettings, SyncMetadata } from '../types';
 import { DEFAULT_EXCHANGE_RATE, DEFAULT_ACCOUNTS } from '../constants';
 
 const KEY_TRANSACTIONS = 'ozledger_transactions';
@@ -9,36 +9,12 @@ const KEY_ACCOUNTS = 'ozledger_accounts';
 const KEY_NOTES = 'ozledger_financial_notes';
 const KEY_SNAPSHOTS = 'ozledger_asset_snapshots';
 const KEY_GOOGLE_CONFIG = 'ozledger_google_config';
+const KEY_SYNC_METADATA = 'ozledger_sync_metadata';
+const KEY_PERSISTENCE_SETTINGS = 'ozledger_persistence_settings';
 
-// Seed data from user backup
-const SEED_TRANSACTIONS: Transaction[] = [
-  {
-    "amount": 20000,
-    "currency": "CNY",
-    "type": "income",
-    "categoryId": "remittance",
-    "accountId": "sp_reimburse",
-    "note": "12月生活费",
-    "id": "afca29e7-7f6b-4343-b132-8a77a1d2f74a",
-    "date": "2025-12-08T04:12:42.308Z"
-  }
-];
+const SEED_TRANSACTIONS: Transaction[] = [];
 
-// Seed data for historical assets
-const SEED_SNAPSHOTS: AssetSnapshot[] = [
-  { id: 'h1', date: '2024-08-01', totalCNY: 244847.8, note: '初始记录' },
-  { id: 'h2', date: '2024-09-23', totalCNY: 331302.70, note: '' },
-  { id: 'h3', date: '2024-10-02', totalCNY: 343617.42, note: '' },
-  { id: 'h4', date: '2024-10-13', totalCNY: 350077.09, note: '' },
-  { id: 'h5', date: '2025-01-24', totalCNY: 368356.6, note: '' },
-  { id: 'h6', date: '2025-03-25', totalCNY: 354993.4, note: '' },
-  { id: 'h7', date: '2025-04-04', totalCNY: 369088.5, note: '' },
-  { id: 'h8', date: '2025-04-17', totalCNY: 368955.5, note: '' },
-  { id: 'h9', date: '2025-05-20', totalCNY: 330294.07, note: '' },
-  { id: 'h10', date: '2025-07-10', totalCNY: 343928, note: '' },
-  { id: 'h11', date: '2025-09-19', totalCNY: 382114, note: '' },
-  { id: 'h12', date: '2025-12-08', totalCNY: 379359.50, note: '当前' },
-];
+const SEED_SNAPSHOTS: AssetSnapshot[] = [];
 
 export const getStoredTransactions = (): Transaction[] => {
   try {
@@ -177,3 +153,41 @@ export const saveGoogleConfig = (config: GoogleConfig) => {
     console.error("Failed to save google config", e);
   }
 }
+
+export const getSyncMetadata = (): SyncMetadata => {
+  try {
+    const data = localStorage.getItem(KEY_SYNC_METADATA);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveSyncMetadata = (metadata: SyncMetadata) => {
+  try {
+    localStorage.setItem(KEY_SYNC_METADATA, JSON.stringify(metadata));
+  } catch (e) {
+    console.error('Failed to save sync metadata', e);
+  }
+};
+
+export const getPersistenceSettings = (): PersistenceSettings => {
+  try {
+    const data = localStorage.getItem(KEY_PERSISTENCE_SETTINGS);
+    if (!data) return { cloudPreferred: true };
+    const parsed = JSON.parse(data);
+    return {
+      cloudPreferred: parsed.cloudPreferred !== false,
+    };
+  } catch {
+    return { cloudPreferred: true };
+  }
+};
+
+export const savePersistenceSettings = (settings: PersistenceSettings) => {
+  try {
+    localStorage.setItem(KEY_PERSISTENCE_SETTINGS, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save persistence settings', e);
+  }
+};

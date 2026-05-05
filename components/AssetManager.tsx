@@ -138,18 +138,18 @@ const AssetManager: React.FC<Props> = ({ accounts, onSave, onClose }) => {
       <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar animate-in zoom-in-95 duration-200">
         
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-slate-800">设置初始余额</h2>
+          <h2 className="text-xl font-bold text-slate-800">更新当前余额</h2>
           <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
             <X size={24} />
           </button>
         </div>
 
         <div className="text-sm text-slate-500 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-100">
-          <p>请输入各账户的当前余额。</p>
+          <p>这里维护的是“当前余额”。每次盘点完账户后先在这里更新，再去保存一次快照。</p>
           <div className="mt-2 text-xs flex flex-col gap-1">
              <div className="flex items-center gap-1 text-slate-600">
                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-               <span>普通资产：正数代表存款</span>
+               <span>普通资产：正数代表资产余额</span>
              </div>
              <div className="flex items-center gap-1 text-red-500 font-bold">
                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
@@ -168,7 +168,7 @@ const AssetManager: React.FC<Props> = ({ accounts, onSave, onClose }) => {
           onClick={handleSave}
           className="w-full mt-8 py-3 bg-brand-navy text-white font-bold rounded-xl shadow-lg hover:bg-blue-800 flex items-center justify-center gap-2 transition-colors"
         >
-          <Save size={18} /> 保存配置
+          <Save size={18} /> 保存当前余额
         </button>
       </div>
     </div>
