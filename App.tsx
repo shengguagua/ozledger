@@ -42,6 +42,28 @@ const normalizeDisplayName = (name: string, currency: string) => {
   return directMap.get(name) || name;
 };
 
+const normalizeLogicalAccountName = (name: string, currency: string) => {
+  const directMap = new Map<string, string>([
+    ['银行卡（工，中）-工', '工商银行'],
+    ['工行卡', '工商银行'],
+    ['工行', currency === 'CNY' ? '工商银行' : '工行'],
+    ['银行卡（工，中）-中', currency === 'CNY' ? '中国银行' : 'BOC'],
+    ['中行', currency === 'CNY' ? '中国银行' : 'BOC'],
+    ['中国银行', '中国银行'],
+    ['BOC', 'BOC'],
+    ['COM', 'CBA'],
+    ['CommBank', 'CBA'],
+    ['CBA', 'CBA'],
+    ['bond', 'BOND'],
+    ['Bond (押金)', 'BOND'],
+    ['美股账户', '美股'],
+    ['现金(AUD)', '现金'],
+    ['现金(CNY)', '现金'],
+  ]);
+
+  return directMap.get(name) || normalizeDisplayName(name, currency);
+};
+
 const groupByOwner = (details: HistoricalAccountDetail[]) => {
   return details.reduce((acc, detail) => {
     if (!acc[detail.owner]) acc[detail.owner] = [];
@@ -86,8 +108,12 @@ const splitCurrencyBuckets = (rows: HistoricalAccountDetail[]) => ({
   foreign: rows.filter((detail) => detail.currency !== 'CNY'),
 });
 
-const isCommonAccountDetail = (detail: HistoricalAccountDetail, commonAccountIds: Set<string>) => {
-  return commonAccountIds.has(detail.accountId) || detail.accountId.startsWith('custom-');
+const getLogicalAccountKey = (detail: HistoricalAccountDetail) => {
+  return [detail.owner, normalizeLogicalAccountName(detail.name, detail.currency), detail.currency].join('::');
+};
+
+const isCommonAccountDetail = (detail: HistoricalAccountDetail, commonAccountKeys: Set<string>) => {
+  return commonAccountKeys.has(getLogicalAccountKey(detail)) || detail.accountId.startsWith('custom-');
 };
 
 const parseLooseNumber = (value: string | number | undefined, fallback = 0) => {
@@ -620,34 +646,36 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isCreating, isEditing]);
 
-  const commonAccountIds = useMemo(() => {
+  const commonAccountKeys = useMemo(() => {
     if (!activeSnapshots.length) return new Set<string>();
 
+    const recentSnapshots = activeSnapshots.slice(0, Math.min(activeSnapshots.length, 6));
     const frequencyMap = new Map<string, number>();
-    for (const snapshot of activeSnapshots) {
+    for (const snapshot of recentSnapshots) {
       const seenInSnapshot = new Set<string>();
       for (const detail of snapshot.accountDetails || []) {
-        if (seenInSnapshot.has(detail.accountId)) continue;
-        seenInSnapshot.add(detail.accountId);
-        frequencyMap.set(detail.accountId, (frequencyMap.get(detail.accountId) || 0) + 1);
+        const logicalKey = getLogicalAccountKey(detail);
+        if (seenInSnapshot.has(logicalKey)) continue;
+        seenInSnapshot.add(logicalKey);
+        frequencyMap.set(logicalKey, (frequencyMap.get(logicalKey) || 0) + 1);
       }
     }
 
-    const recurringThreshold = Math.max(3, Math.ceil(activeSnapshots.length * 0.4));
+    const recurringThreshold = Math.min(3, recentSnapshots.length);
     return new Set(
       [...frequencyMap.entries()]
-        .filter(([accountId, count]) => {
-          const latestDetail = activeSnapshots[0]?.accountDetails?.find((detail) => detail.accountId === accountId);
-          const forcedCommon = latestDetail && latestDetail.owner === '家庭' && ['bond', '美股'].includes(latestDetail.name);
+        .filter(([logicalKey, count]) => {
+          const latestDetail = activeSnapshots[0]?.accountDetails?.find((detail) => getLogicalAccountKey(detail) === logicalKey);
+          const forcedCommon = latestDetail && latestDetail.owner === '家庭' && ['BOND', '美股'].includes(normalizeLogicalAccountName(latestDetail.name, latestDetail.currency));
           return count >= recurringThreshold || Boolean(forcedCommon);
         })
-        .map(([accountId]) => accountId)
+        .map(([logicalKey]) => logicalKey)
     );
   }, [activeSnapshots]);
 
   const commonDetails = useMemo(
-    () => (selectedSnapshot?.accountDetails || []).filter((detail) => commonAccountIds.has(detail.accountId)),
-    [selectedSnapshot, commonAccountIds]
+    () => (selectedSnapshot?.accountDetails || []).filter((detail) => isCommonAccountDetail(detail, commonAccountKeys)),
+    [selectedSnapshot, commonAccountKeys]
   );
 
   const foldedSpecificDetails = useMemo(
@@ -662,10 +690,10 @@ const App: React.FC = () => {
 
   const specificDetails = useMemo(
     () => [
-      ...((selectedSnapshot?.accountDetails || []).filter((detail) => !commonAccountIds.has(detail.accountId))),
+      ...((selectedSnapshot?.accountDetails || []).filter((detail) => !isCommonAccountDetail(detail, commonAccountKeys))),
       ...foldedSpecificDetails,
     ],
-    [selectedSnapshot, commonAccountIds, foldedSpecificDetails]
+    [selectedSnapshot, commonAccountKeys, foldedSpecificDetails]
   );
 
   const editableAccountDetails = useMemo(
@@ -674,23 +702,23 @@ const App: React.FC = () => {
   );
 
   const editableSpecificAccountDetails = useMemo(
-    () => editableAccountDetails.filter((detail) => !commonAccountIds.has(detail.accountId)),
-    [editableAccountDetails, commonAccountIds]
+    () => editableAccountDetails.filter((detail) => !isCommonAccountDetail(detail, commonAccountKeys)),
+    [editableAccountDetails, commonAccountKeys]
   );
 
   const displayedCommonDetails = useMemo(() => {
     if (!isEditing) return commonDetails;
     return draftAccountDetails
-      .filter((detail) => isCommonAccountDetail(detail, commonAccountIds))
+      .filter((detail) => isCommonAccountDetail(detail, commonAccountKeys))
       .map((detail) => ({
       ...detail,
       balance: parseLooseNumber(draftBalances[detail.accountId], detail.balance),
     }));
-  }, [commonAccountIds, commonDetails, draftAccountDetails, draftBalances, isEditing]);
+  }, [commonAccountKeys, commonDetails, draftAccountDetails, draftBalances, isEditing]);
 
   const displayedSpecificDetails = useMemo(() => {
     const actualSpecific = (isEditing ? draftAccountDetails : editableSpecificAccountDetails)
-      .filter((detail) => !isCommonAccountDetail(detail, commonAccountIds))
+      .filter((detail) => !isCommonAccountDetail(detail, commonAccountKeys))
       .map((detail) => ({
       ...detail,
       balance: parseLooseNumber(draftBalances[detail.accountId], detail.balance),
@@ -702,21 +730,21 @@ const App: React.FC = () => {
         }))
       : [];
     return isEditing ? [...actualSpecific, ...nextSpecialItems] : specificDetails;
-  }, [commonAccountIds, draftAccountDetails, draftBalances, draftSpecialBalances, draftSpecialItems, editableSpecificAccountDetails, isEditing, specificDetails]);
+  }, [commonAccountKeys, draftAccountDetails, draftBalances, draftSpecialBalances, draftSpecialItems, editableSpecificAccountDetails, isEditing, specificDetails]);
 
   const displayedCreateCommonDetails = useMemo(() => {
     if (!isCreating) return commonDetails;
     return createAccountDetails
-      .filter((detail) => isCommonAccountDetail(detail, commonAccountIds))
+      .filter((detail) => isCommonAccountDetail(detail, commonAccountKeys))
       .map((detail) => ({
       ...detail,
       balance: parseLooseNumber(createBalances[detail.accountId], detail.balance),
     }));
-  }, [commonAccountIds, commonDetails, createAccountDetails, createBalances, isCreating]);
+  }, [commonAccountKeys, commonDetails, createAccountDetails, createBalances, isCreating]);
 
   const displayedCreateSpecificDetails = useMemo(() => {
     const actualSpecific = (isCreating ? createAccountDetails : editableSpecificAccountDetails)
-      .filter((detail) => !isCommonAccountDetail(detail, commonAccountIds))
+      .filter((detail) => !isCommonAccountDetail(detail, commonAccountKeys))
       .map((detail) => ({
       ...detail,
       balance: parseLooseNumber(createBalances[detail.accountId], detail.balance),
@@ -728,7 +756,7 @@ const App: React.FC = () => {
         }))
       : [];
     return isCreating ? [...actualSpecific, ...nextSpecialItems] : specificDetails;
-  }, [commonAccountIds, createAccountDetails, createBalances, createSpecialBalances, createSpecialItems, editableSpecificAccountDetails, isCreating, specificDetails]);
+  }, [commonAccountKeys, createAccountDetails, createBalances, createSpecialBalances, createSpecialItems, editableSpecificAccountDetails, isCreating, specificDetails]);
 
   const selectedExchangeRate = selectedSnapshot?.exchangeRate ?? settings.exchangeRate;
   const selectedUsdRate = selectedSnapshot?.usdRate ?? settings.usdRate;
