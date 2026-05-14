@@ -40,7 +40,8 @@ jobs:
           command_timeout: 30m
           script: |
             export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
-            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH_RAW='${{ secrets.DEPLOY_PATH }}'
+            DEPLOY_PATH="$(printf '%s' "$DEPLOY_PATH_RAW" | tr -d '\r\n')"
             cd "$DEPLOY_PATH"
             test -f .env
             mkdir -p data/backups
