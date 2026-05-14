@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# GitHub Actions SSH sessions may not load the same shell profile as an
+# interactive login, so we make common Node/PM2 locations explicit.
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
+
 APP_DIR="${DEPLOY_PATH:-$(pwd)}"
 
 echo "[deploy] app dir: ${APP_DIR}"
