@@ -30,24 +30,20 @@ jobs:
           rm: false
 
       - name: Run remote deploy
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
+          envs: DEPLOY_PATH
           script_stop: true
           command_timeout: 30m
           script: |
             export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
-            DEPLOY_PATH_RAW='${{ secrets.DEPLOY_PATH }}'
-            DEPLOY_PATH="$(printf '%s' "$DEPLOY_PATH_RAW" | tr -d '\r\n')"
+            DEPLOY_PATH="$(printf '%s' "$DEPLOY_PATH" | tr -d '\r\n')"
+            export DEPLOY_PATH
             cd "$DEPLOY_PATH"
-            test -f .env
-            mkdir -p data/backups
-            find . -name '._*' -delete
-            npm ci --ignore-scripts
-            npm run build:server
-            npm run build
-            pm2 startOrReload ecosystem.config.cjs --update-env
-            pm2 save
+            bash scripts/deploy-remote.sh
