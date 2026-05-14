@@ -22,6 +22,35 @@ data/ozledger.sqlite
 
 你可以继续使用 JSON 做备份和恢复，但主存储已经不是 Google Sheets。
 
+现在这套后端默认还使用本地 SQLite，但已经加上了：
+
+- 保存前自动备份
+- 服务端重算快照总资产，避免前端手填总额和明细不一致
+- 基于 `lastSavedAt` 的防覆盖保护，避免旧页面把新数据顶掉
+- 更严格的输入校验，防止无效汇率和坏数据写入库
+
+## 腾讯云数据库目标
+
+当前项目支持通过 `.env` 切到 MySQL。示例见：
+
+```bash
+.env.example
+```
+
+当前项目里已经把腾讯云数据库目标主机预留成：
+
+```bash
+OZ_DB_HOST=43.136.32.239
+```
+
+如果设置：
+
+```bash
+DB_CLIENT=mysql
+```
+
+后端会自动切到 MySQL，并在目标库里自动建表。没有设置时，默认继续使用本地 SQLite。
+
 ## 本地开发
 
 安装依赖：
@@ -63,6 +92,34 @@ npm run build
 2. `npm run start`
 3. 用 `pm2` 守护 Node 服务
 4. 用 `nginx` 反代前端静态资源和 `/api`
+
+## 自动化发布
+
+现在仓库里已经放好了自动化发布骨架，适合你这条链路：
+
+1. 本地在 Codex 改代码
+2. `git push origin main`
+3. GitHub Actions 触发：
+   - 先跑 `CI`
+   - 再通过 SSH 登录腾讯云 Linux
+4. 服务器执行 [scripts/deploy-remote.sh](/Users/melon/Documents/GitHub/ozledger/scripts/deploy-remote.sh)
+5. 自动完成：
+   - `git fetch`
+   - `git reset --hard origin/main`
+   - `npm ci`
+   - `npm run build:server`
+   - `npm run build`
+   - `pm2 startOrReload`
+6. `nginx` 对公网提供 `dist`，并把 `/api` 转发给 `127.0.0.1:8787`
+
+相关文件：
+
+- [CI workflow](/Users/melon/Documents/GitHub/ozledger/.github/workflows/ci.yml)
+- [Deploy workflow](/Users/melon/Documents/GitHub/ozledger/.github/workflows/deploy.yml)
+- [PM2 config](/Users/melon/Documents/GitHub/ozledger/ecosystem.config.cjs)
+- [Remote deploy script](/Users/melon/Documents/GitHub/ozledger/scripts/deploy-remote.sh)
+- [Nginx example](/Users/melon/Documents/GitHub/ozledger/deploy/nginx.ozledger.conf.example)
+- [Deploy notes](/Users/melon/Documents/GitHub/ozledger/deploy/README.md)
 
 ## 当前功能
 

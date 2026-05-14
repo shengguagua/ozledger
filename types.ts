@@ -88,6 +88,8 @@ export interface AppMeta {
   dbPath?: string;
   accountCount?: number;
   snapshotCount?: number;
+  dbDriver?: string;
+  dbTargetHost?: string;
 }
 
 export interface AppStatePayload {
@@ -105,4 +107,10 @@ export interface BackupHistoryEntry {
   summary: string;
   backupPath?: string;
   fileName?: string;
+}
+
+export interface RequestConflictPayload {
+  error: string;
+  code?: string;
+  currentRevision?: string;
 }

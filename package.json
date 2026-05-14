@@ -1,4 +1,3 @@
-
 {
   "name": "ozledger-local",
   "private": true,
@@ -9,7 +8,7 @@
     "dev:client": "vite",
     "dev:server": "node --watch server/index.js",
     "build": "vite build",
-    "build:server": "node --check server/index.js && node --check server/db.js && node --check server/seed.js",
+    "build:server": "node --check server/index.js && node --check server/db.js && node --check server/sqlite-db.js && node --check server/mysql-db.js && node --check server/seed.js",
     "preview": "vite preview",
     "serve": "serve -s dist -l 3000",
     "start": "node server/index.js"
@@ -17,8 +16,10 @@
   "dependencies": {
     "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "lucide-react": "^0.344.0",
+    "mysql2": "^3.22.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

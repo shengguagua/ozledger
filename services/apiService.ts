@@ -4,51 +4,76 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+  code?: string;
+  currentRevision?: string;
+
+  constructor(message: string, status: number, code?: string, currentRevision?: string) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.code = code;
+    this.currentRevision = currentRevision;
+  }
+}
+
 const request = async <T>(input: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, init);
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let payload: any = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    throw new ApiRequestError(
+      payload?.error || `Request failed: ${response.status}`,
+      response.status,
+      payload?.code,
+      payload?.currentRevision
+    );
   }
   return response.json();
 };
 
 export const getBootstrapData = () => request<AppStatePayload>('/api/bootstrap');
 
-export const saveAccounts = (accounts: Account[]) =>
+export const saveAccounts = (accounts: Account[], baseRevision?: string) =>
   request<AppStatePayload>('/api/accounts', {
     method: 'PUT',
     headers: jsonHeaders,
-    body: JSON.stringify({ accounts }),
+    body: JSON.stringify({ accounts, baseRevision }),
   });
 
-export const saveSnapshots = (snapshots: AssetSnapshot[]) =>
+export const saveSnapshots = (snapshots: AssetSnapshot[], baseRevision?: string) =>
   request<AppStatePayload>('/api/snapshots', {
     method: 'PUT',
     headers: jsonHeaders,
-    body: JSON.stringify({ snapshots }),
+    body: JSON.stringify({ snapshots, baseRevision }),
   });
 
-export const saveSettings = (settings: Partial<AppSettings>) =>
+export const saveSettings = (settings: Partial<AppSettings>, baseRevision?: string) =>
   request<AppStatePayload>('/api/settings', {
     method: 'PUT',
     headers: jsonHeaders,
-    body: JSON.stringify({ settings }),
+    body: JSON.stringify({ settings, baseRevision }),
   });
 
-export const saveTransactions = (transactions: Transaction[]) =>
+export const saveTransactions = (transactions: Transaction[], baseRevision?: string) =>
   request<AppStatePayload>('/api/transactions', {
     method: 'PUT',
     headers: jsonHeaders,
-    body: JSON.stringify({ transactions }),
+    body: JSON.stringify({ transactions, baseRevision }),
   });
 
 export const exportBackup = () => request<any>('/api/backup/export');
 
-export const importBackup = (payload: Record<string, unknown>) =>
+export const importBackup = (payload: Record<string, unknown>, baseRevision?: string) =>
   request<AppStatePayload>('/api/backup/import', {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, baseRevision }),
   });
 
 export const getBackupHistory = () =>

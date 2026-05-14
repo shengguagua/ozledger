@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AppMeta, AppSettings, AssetSnapshot, BackupHistoryEntry, HistoricalAccountDetail } from './types';
 import * as api from './services/apiService';
+import { ApiRequestError } from './services/apiService';
 import { ArrowDown, ArrowUp, CalendarDays, Database, Layers3, Loader2, NotebookPen, PencilLine, RotateCcw, Save, ServerCrash, TrendingDown, TrendingUp, X } from 'lucide-react';
 
 const ownerOrder = ['小盛', '大王', '家庭'] as const;
@@ -102,6 +103,10 @@ const parseLooseNumber = (value: string | number | undefined, fallback = 0) => {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+
+const hasPositiveRate = (value: string | number | undefined, fallback: number) => parseLooseNumber(value, fallback) > 0;
+const hasMatchingManualTotal = (manualTotal: string, computedTotal: number) =>
+  Math.abs(parseLooseNumber(manualTotal, computedTotal) - computedTotal) <= 0.01;
 
 const calculateSignedTotal = (rows: HistoricalAccountDetail[]) => {
   return rows.reduce((sum, detail) => {
@@ -508,6 +513,9 @@ const App: React.FC = () => {
   const [backupHistory, setBackupHistory] = useState<BackupHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [serverError, setServerError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [isRestoringBackup, setIsRestoringBackup] = useState('');
   const [selectedSnapshotId, setSelectedSnapshotId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -533,24 +541,35 @@ const App: React.FC = () => {
   const [createExchangeRate, setCreateExchangeRate] = useState('');
   const [createUsdRate, setCreateUsdRate] = useState('');
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setServerError('');
-        const [payload, backups] = await Promise.all([api.getBootstrapData(), api.getBackupHistory()]);
-        setSnapshots(payload.snapshots || []);
-        setSettings(payload.settings);
-        setMeta(payload.meta || {});
-        setBackupHistory(backups);
-      } catch {
-        setServerError('无法连接本地数据库服务，请先运行 `npm run dev`。');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadData = async () => {
+    try {
+      setServerError('');
+      const [payload, backups] = await Promise.all([api.getBootstrapData(), api.getBackupHistory()]);
+      setSnapshots(payload.snapshots || []);
+      setSettings(payload.settings);
+      setMeta(payload.meta || {});
+      setBackupHistory(backups);
+    } catch {
+      setServerError('无法连接本地数据库服务，请先运行 `npm run dev`。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
+
+  const handleApiError = async (error: unknown, fallbackMessage: string) => {
+    if (error instanceof ApiRequestError && error.status === 409) {
+      setSaveError('发现数据库里有更新过的新数据，这次保存已被拦截。页面将刷新到最新状态。');
+      setIsEditing(false);
+      setIsCreating(false);
+      await loadData();
+      return;
+    }
+    setSaveError(error instanceof Error ? error.message : fallbackMessage);
+  };
 
   const activeSnapshots = useMemo(
     () => snapshots.filter((snapshot) => !snapshot.isDeleted).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
@@ -576,6 +595,30 @@ const App: React.FC = () => {
     setIsEditing(false);
     setIsCreating(false);
   }, [selectedSnapshotId]);
+
+  useEffect(() => {
+    if (!saveSuccess) return undefined;
+    const timeout = window.setTimeout(() => setSaveSuccess(''), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [saveSuccess]);
+
+  useEffect(() => {
+    if (!saveError) return undefined;
+    const timeout = window.setTimeout(() => setSaveError(''), 5200);
+    return () => window.clearTimeout(timeout);
+  }, [saveError]);
+
+  useEffect(() => {
+    if (!(isEditing || isCreating)) return undefined;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isCreating, isEditing]);
 
   const commonAccountIds = useMemo(() => {
     if (!activeSnapshots.length) return new Set<string>();
@@ -1039,6 +1082,10 @@ const App: React.FC = () => {
 
   const handleSaveSnapshotEdits = async () => {
     if (!selectedSnapshot) return;
+    if (!hasPositiveRate(draftExchangeRate, settings.exchangeRate) || !hasPositiveRate(draftUsdRate, settings.usdRate)) {
+      setSaveError('汇率必须是大于 0 的数字。');
+      return;
+    }
 
     const nextAccountDetails = draftAccountDetails.map((detail) => ({
       ...detail,
@@ -1061,21 +1108,34 @@ const App: React.FC = () => {
 
     const updatedSnapshots = snapshots.map((snapshot) => (snapshot.id === selectedSnapshot.id ? nextSnapshot : snapshot));
     try {
-      const payload = await api.saveSnapshots(updatedSnapshots);
+      setIsSaving(true);
+      setSaveError('');
+      const payload = await api.saveSnapshots(updatedSnapshots, settings.lastSavedAt);
       setSnapshots(payload.snapshots);
       setSettings(payload.settings);
       setMeta(payload.meta || {});
       setBackupHistory(await api.getBackupHistory());
       cancelEditing();
-    } catch {
-      alert('保存失败，请确认后端正在运行。');
+      setSaveSuccess(`已保存 ${nextSnapshot.date}`);
+    } catch (error) {
+      await handleApiError(error, '保存失败，请确认后端正在运行。');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleSaveNewSnapshot = async () => {
     if (!selectedSnapshot) return;
     if (!createDate) {
-      alert('请选择日期');
+      setSaveError('请选择日期。');
+      return;
+    }
+    if (!hasPositiveRate(createExchangeRate, settings.exchangeRate) || !hasPositiveRate(createUsdRate, settings.usdRate)) {
+      setSaveError('汇率必须是大于 0 的数字。');
+      return;
+    }
+    if (createKind === 'backfill' && !hasMatchingManualTotal(createTotal, computedCreateTotal)) {
+      setSaveError(`手填总资产与明细计算不一致。当前明细自动计算为 ¥${computedCreateTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}。`);
       return;
     }
 
@@ -1091,7 +1151,7 @@ const App: React.FC = () => {
     const nextSnapshot: AssetSnapshot = {
       id: crypto.randomUUID(),
       date: createDate,
-      totalCNY: createKind === 'new' ? computedCreateTotal : parseLooseNumber(createTotal, 0),
+      totalCNY: computedCreateTotal,
       exchangeRate: parseLooseNumber(createExchangeRate, settings.exchangeRate),
       usdRate: parseLooseNumber(createUsdRate, settings.usdRate),
       note: buildSnapshotNote(createBaseNote, nextSpecialItems.filter((item) => item.name.trim())),
@@ -1103,15 +1163,20 @@ const App: React.FC = () => {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     try {
-      const payload = await api.saveSnapshots(updatedSnapshots);
+      setIsSaving(true);
+      setSaveError('');
+      const payload = await api.saveSnapshots(updatedSnapshots, settings.lastSavedAt);
       setSnapshots(payload.snapshots);
       setSettings(payload.settings);
       setMeta(payload.meta || {});
       setBackupHistory(await api.getBackupHistory());
       setSelectedSnapshotId(nextSnapshot.id);
       cancelCreating();
-    } catch {
-      alert('保存失败，请确认后端正在运行。');
+      setSaveSuccess(`已保存 ${nextSnapshot.date}`);
+    } catch (error) {
+      await handleApiError(error, '保存失败，请确认后端正在运行。');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1122,14 +1187,15 @@ const App: React.FC = () => {
 
     try {
       setIsRestoringBackup(fileName);
+      setSaveError('');
       const payload = await api.restoreBackup(fileName);
       setSnapshots(payload.snapshots || []);
       setSettings(payload.settings);
       setMeta(payload.meta || {});
       setBackupHistory(await api.getBackupHistory());
-      alert('回滚完成。');
-    } catch {
-      alert('回滚失败，请确认后端正在运行且备份文件有效。');
+      setSaveSuccess(`已回滚到 ${fileName}`);
+    } catch (error) {
+      await handleApiError(error, '回滚失败，请确认后端正在运行且备份文件有效。');
     } finally {
       setIsRestoringBackup('');
     }
@@ -1196,12 +1262,24 @@ const App: React.FC = () => {
               <div className="rounded-[20px] border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
                 <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-50/60">{settings.storageMode || 'sqlite'}</div>
                 <div className="mt-2 text-sm font-semibold">{meta.dbPath || 'data/ozledger.sqlite'}</div>
+                {meta.dbTargetHost ? (
+                  <div className="mt-1 text-[11px] text-emerald-50/60">cloud target: {meta.dbTargetHost}</div>
+                ) : null}
               </div>
             </div>
           </div>
         </div>
 
         <section className="mt-5 rounded-[24px] border border-[#e6decd] bg-brand-paper px-4 py-4 shadow-soft sm:px-5">
+          {(saveError || saveSuccess) && (
+            <div className={`mb-3 rounded-[18px] border px-4 py-3 text-sm ${
+              saveError
+                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            }`}>
+              {saveError || saveSuccess}
+            </div>
+          )}
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">最新一期澳币净余额</div>
@@ -1395,10 +1473,11 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleSaveSnapshotEdits}
+                    disabled={isSaving}
                     className="inline-flex items-center gap-2 rounded-2xl bg-[#18352a] px-4 py-2.5 text-sm font-bold text-white"
                   >
                     <Save size={15} />
-                    保存修改
+                    {isSaving ? '保存中…' : '保存修改'}
                   </button>
                   <button
                     type="button"
@@ -1456,10 +1535,11 @@ const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveNewSnapshot}
+                  disabled={isSaving}
                   className="inline-flex items-center gap-2 rounded-2xl bg-[#18352a] px-4 py-2.5 text-sm font-bold text-white"
                 >
                   <Save size={15} />
-                  保存新期别
+                  {isSaving ? '保存中…' : '保存新期别'}
                 </button>
                 <button
                   type="button"
@@ -1520,6 +1600,17 @@ const App: React.FC = () => {
                 className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
               />
             </div>
+
+            {createKind === 'backfill' && createTotal && (
+              <div className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+                hasMatchingManualTotal(createTotal, computedCreateTotal)
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-amber-200 bg-amber-50 text-amber-700'
+              }`}>
+                明细自动计算：¥{computedCreateTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
+                {!hasMatchingManualTotal(createTotal, computedCreateTotal) && '，请先把手填总资产对齐后再保存。'}
+              </div>
+            )}
 
             <div className="mt-5 space-y-5">
               <section className="rounded-[24px] border border-[#e6decd] bg-white p-4">

@@ -1,0 +1,46 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ozledger-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload app files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          source: ".github,.gitignore,App.tsx,README.md,components,constants.tsx,deploy,ecosystem.config.cjs,index.html,index.tsx,metadata.json,package-lock.json,package.json,scripts,server,services,tsconfig.json,tsconfig.node.json,types.ts,vite.config.ts,.env.example"
+          target: ${{ secrets.DEPLOY_PATH }}
+          overwrite: true
+          rm: false
+
+      - name: Run remote deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH,DEPLOY_BRANCH
+          script: |
+            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            export DEPLOY_BRANCH="${{ secrets.DEPLOY_BRANCH || 'main' }}"
+            cd "$DEPLOY_PATH"
+            chmod +x scripts/deploy-remote.sh
+            ./scripts/deploy-remote.sh
