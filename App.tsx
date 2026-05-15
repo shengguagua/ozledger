@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AppMeta, AppSettings, AssetSnapshot, BackupHistoryEntry, HistoricalAccountDetail } from './types';
 import * as api from './services/apiService';
 import { ApiRequestError } from './services/apiService';
-import { ArrowDown, ArrowUp, CalendarDays, Database, Layers3, Loader2, NotebookPen, PencilLine, RotateCcw, Save, ServerCrash, TrendingDown, TrendingUp, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BadgeCheck, Building2, CalendarDays, CircleDollarSign, Clock3, Database, Layers3, Loader2, NotebookPen, PanelTop, PencilLine, RotateCcw, Save, ServerCrash, ShieldCheck, Sparkles, TrendingDown, TrendingUp, WalletCards, X } from 'lucide-react';
 
 const ownerOrder = ['小盛', '大王', '家庭'] as const;
 
@@ -108,6 +108,10 @@ const splitCurrencyBuckets = (rows: HistoricalAccountDetail[]) => ({
   foreign: rows.filter((detail) => detail.currency !== 'CNY'),
 });
 
+const bucketIsEmpty = (buckets: ReturnType<typeof splitCurrencyBuckets>) => {
+  return buckets.cny.length === 0 && buckets.foreign.length === 0;
+};
+
 const getLogicalAccountKey = (detail: HistoricalAccountDetail) => {
   return [detail.owner, normalizeLogicalAccountName(detail.name, detail.currency), detail.currency].join('::');
 };
@@ -145,6 +149,29 @@ const calculateSignedTotalCNYEquivalent = (rows: HistoricalAccountDetail[], exch
     return sum + toCNY(detail.balance, detail.currency, exchangeRate, usdRate);
   }, 0);
 };
+
+const formatLocalDateTime = (value?: string) => {
+  if (!value) return '尚未写入';
+  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+};
+
+const ownerPalette = {
+  小盛: {
+    badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20',
+    panel: 'from-sky-500/8 via-white to-sky-500/5',
+    dot: 'bg-sky-500',
+  },
+  大王: {
+    badge: 'bg-violet-500/10 text-violet-700 ring-1 ring-violet-500/20',
+    panel: 'from-violet-500/8 via-white to-violet-500/5',
+    dot: 'bg-violet-500',
+  },
+  家庭: {
+    badge: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20',
+    panel: 'from-amber-500/10 via-white to-amber-500/5',
+    dot: 'bg-amber-500',
+  },
+} as const;
 
 const isSubtractingDetail = (detail: HistoricalAccountDetail) => {
   return detail.balance < 0;
@@ -235,6 +262,59 @@ const getBalanceInputValue = (
   return accountBalanceMap[detail.accountId] ?? String(detail.balance);
 };
 
+const MetricCard: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  icon: React.ReactNode;
+  tone?: 'default' | 'success' | 'accent';
+}> = ({ label, value, hint, icon, tone = 'default' }) => {
+  const toneClass = tone === 'success'
+    ? 'border-emerald-200/70 bg-emerald-50/80'
+    : tone === 'accent'
+      ? 'border-sky-200/70 bg-sky-50/80'
+      : 'border-slate-200/80 bg-white/90';
+
+  return (
+    <div className={`rounded-[24px] border ${toneClass} p-4 shadow-[0_24px_50px_-38px_rgba(15,23,42,0.45)]`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{label}</div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
+          {icon}
+        </div>
+      </div>
+      <div className="mt-3 text-xl font-bold text-slate-950">{value}</div>
+      {hint ? <div className="mt-1 text-sm text-slate-500">{hint}</div> : null}
+    </div>
+  );
+};
+
+const ActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'ghost';
+}> = ({ label, icon, onClick, disabled, variant = 'secondary' }) => {
+  const className = variant === 'primary'
+    ? 'border border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800'
+    : variant === 'ghost'
+      ? 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+      : 'border border-slate-200 bg-white text-slate-800 hover:bg-slate-50';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition ${className} disabled:cursor-not-allowed disabled:opacity-60`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+};
+
 const ChangeList: React.FC<{
   title: string;
   emptyText: string;
@@ -246,21 +326,24 @@ const ChangeList: React.FC<{
     diff: number;
   }>;
 }> = ({ title, emptyText, items }) => (
-  <div className="rounded-[20px] border border-[#e8dfcf] bg-white p-4">
-    <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{title}</div>
+  <div className="rounded-[24px] border border-slate-200/70 bg-white/90 p-4 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.4)]">
+    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+      <Sparkles size={13} />
+      {title}
+    </div>
     {items.length === 0 ? (
-      <div className="mt-3 rounded-xl border border-dashed border-[#e5dcc9] bg-[#fcfaf4] px-3 py-3 text-xs text-slate-400">
+      <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/90 px-3 py-4 text-xs text-slate-400">
         {emptyText}
       </div>
     ) : (
-      <div className="mt-3 grid gap-2">
+      <div className="mt-4 grid gap-2.5">
         {items.map((item) => (
-          <div key={`${item.accountId}-${item.currency}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#f0e6d4] bg-[#fcfaf4] px-3 py-2">
+          <div key={`${item.accountId}-${item.currency}`} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-3.5 py-3">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-slate-800">{item.owner} · {normalizeDisplayName(item.name, item.currency)}</div>
-              <div className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{item.currency}</div>
+              <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{item.currency}</div>
             </div>
-            <div className={`shrink-0 font-mono text-sm font-bold ${item.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+            <div className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-sm font-bold ${item.diff >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
               {item.diff >= 0 ? '+' : ''}{getCurrencySymbol(item.currency)}{item.diff.toLocaleString('en-US', { maximumFractionDigits: 2 })}
             </div>
           </div>
@@ -307,48 +390,51 @@ const DetailSection: React.FC<{
   const flatRows = useMemo(() => details, [details]);
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[#e6decd] bg-brand-paper shadow-soft">
-      <div className="border-b border-[#ece1cc] bg-[#f8f2e4] px-4 py-4 sm:px-5">
-        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{title}</div>
-        <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
+    <section className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/90 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur-sm">
+      <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.98)_0%,rgba(241,245,249,0.92)_100%)] px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+          <PanelTop size={13} />
+          {title}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
       </div>
 
       {flatten ? (
-        <div className="p-4">
+        <div className="p-5">
           {flatRows.length === 0 ? (
-            <div className="rounded-[16px] border border-dashed border-[#dfd3be] bg-[#fcfaf4] px-4 py-6 text-center text-sm text-slate-400">
+            <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
               {emptyText}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {[
                 { key: 'cny', label: '人民币', items: splitCurrencyBuckets(flatRows).cny },
                 { key: 'foreign', label: '外币', items: splitCurrencyBuckets(flatRows).foreign },
               ].map((bucket) => (
-                <div key={bucket.key}>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{bucket.label}</div>
-                    <div className="text-[11px] font-mono font-bold text-slate-500">
+                <div key={bucket.key} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">{bucket.label}</div>
+                    <div className="rounded-full bg-white px-3 py-1 text-[11px] font-mono font-bold text-slate-500 shadow-sm">
                       {bucket.label === '人民币'
                         ? `¥${calculateSignedTotal(bucket.items).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
                         : `外币=${calculateSignedTotal(bucket.items).toLocaleString('en-US', { maximumFractionDigits: 2 })} / 人民币=${calculateSignedTotalCNYEquivalent(bucket.items, exchangeRate, usdRate).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
                     </div>
                   </div>
                   {bucket.items.length === 0 ? (
-                    <div className="rounded-[14px] border border-dashed border-[#e5dcc9] bg-[#fcfaf4] px-3 py-3 text-xs text-slate-400">
+                    <div className="rounded-[16px] border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-400">
                       暂无
                     </div>
                   ) : (
-                    <div className="grid gap-2 grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-6">
                       {bucket.items.map((detail) => (
-                        <div key={`${bucket.key}-${detail.accountId}`} className="rounded-[16px] border border-[#ece2d0] bg-white px-3 py-3">
+                        <div key={`${bucket.key}-${detail.accountId}`} className="rounded-[18px] border border-slate-200 bg-white px-3.5 py-3 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.45)]">
                           <div className="flex items-start justify-between gap-2">
                             {editable ? (
                               <input
                                 type="text"
                                 value={detail.name}
                                 onChange={(e) => onNameChange?.(detail, e.target.value)}
-                                className="w-full rounded-lg border border-[#dfd3be] bg-[#fcfaf4] px-2.5 py-2 text-sm font-semibold text-slate-800 outline-none"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm font-semibold text-slate-800 outline-none"
                               />
                             ) : (
                               <div className="truncate text-sm font-semibold text-slate-800">{normalizeDisplayName(detail.name, detail.currency)}</div>
@@ -358,21 +444,21 @@ const DetailSection: React.FC<{
                                 <button
                                   type="button"
                                   onClick={() => onMoveDetail?.(detail, 'up')}
-                                  className="rounded-lg bg-slate-100 p-1 text-slate-500"
+                                  className="rounded-lg bg-slate-100 p-1 text-slate-500 transition hover:bg-slate-200"
                                 >
                                   <ArrowUp size={12} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => onMoveDetail?.(detail, 'down')}
-                                  className="rounded-lg bg-slate-100 p-1 text-slate-500"
+                                  className="rounded-lg bg-slate-100 p-1 text-slate-500 transition hover:bg-slate-200"
                                 >
                                   <ArrowDown size={12} />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => onDeleteDetail?.(detail)}
-                                  className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600"
+                                  className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100"
                                 >
                                   删除
                                 </button>
@@ -384,7 +470,7 @@ const DetailSection: React.FC<{
                               <select
                                 value={detail.currency}
                                 onChange={(e) => onCurrencyChange?.(detail, e.target.value)}
-                                className="w-full rounded-lg border border-[#dfd3be] bg-[#fcfaf4] px-2.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 outline-none"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 outline-none"
                               >
                                 <option value="CNY">CNY</option>
                                 <option value="AUD">AUD</option>
@@ -400,10 +486,10 @@ const DetailSection: React.FC<{
                               inputMode="decimal"
                               value={getBalanceInputValue(detail, balanceInputMap, specialBalanceInputMap)}
                               onChange={(e) => onBalanceChange?.(detail, e.target.value)}
-                              className={`mt-2 w-full rounded-lg border px-2.5 py-2 font-mono text-sm font-bold outline-none ${isSubtractingDetail(detail) ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-[#dfd3be] bg-[#fcfaf4] text-slate-800'}`}
+                              className={`mt-2.5 w-full rounded-xl border px-2.5 py-2 font-mono text-sm font-bold outline-none ${isSubtractingDetail(detail) ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-800'}`}
                             />
                           ) : (
-                            <div className={`mt-2 font-mono text-sm font-bold ${isSubtractingDetail(detail) ? 'text-rose-600' : 'text-slate-800'}`}>
+                            <div className={`mt-2.5 font-mono text-sm font-bold ${isSubtractingDetail(detail) ? 'text-rose-600' : 'text-slate-800'}`}>
                               {getCurrencySymbol(detail.currency)}
                               {detail.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}
                             </div>
@@ -418,57 +504,64 @@ const DetailSection: React.FC<{
           )}
         </div>
       ) : (
-        <div className="grid gap-4 p-4">
+        <div className="grid gap-4 p-5">
           {ownerOrder.map((owner) => {
             const rows = grouped[owner] || [];
             const buckets = splitCurrencyBuckets(rows);
             const ownerTotal = calculateSignedTotalCNYEquivalent(rows, exchangeRate, usdRate);
             return (
-              <div key={owner} className="overflow-hidden rounded-[22px] border border-[#e7decc] bg-white">
-                <div className="flex items-center justify-between border-b border-[#efe4d2] bg-[#fcfaf4] px-4 py-3">
+              <div key={owner} className={`overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] shadow-[0_20px_38px_-32px_rgba(15,23,42,0.55)]`}>
+                <div className={`flex items-center justify-between border-b border-slate-200 bg-gradient-to-r ${ownerPalette[owner].panel} px-4 py-3.5`}>
                   <div>
-                    <div className="text-sm font-bold text-brand-navy">{owner}</div>
-                    <div className="mt-1 text-xs font-mono text-slate-500">≈ ¥{ownerTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${ownerPalette[owner].dot}`} />
+                      <div className="text-sm font-bold text-slate-900">{owner}</div>
+                      <div className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${ownerPalette[owner].badge}`}>{rows.length} 项</div>
+                    </div>
+                    <div className="mt-1.5 text-xs font-mono text-slate-500">≈ ¥{ownerTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                   </div>
-                  <div className="rounded-full bg-[#f2eadb] px-2.5 py-1 text-[11px] font-bold text-slate-500">{rows.length} 项</div>
+                  <div className="hidden rounded-2xl border border-white/80 bg-white/70 px-3 py-2 text-right shadow-sm sm:block">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Owner Summary</div>
+                    <div className="mt-1 font-display text-sm font-bold text-slate-900">{bucketIsEmpty(buckets) ? '待补录' : '已归类'}</div>
+                  </div>
                 </div>
-                <div className="max-h-[360px] overflow-y-auto px-3 py-3">
+                <div className="max-h-[420px] overflow-y-auto px-4 py-4">
                   {rows.length === 0 && (
-                    <div className="rounded-[16px] border border-dashed border-[#dfd3be] bg-[#fcfaf4] px-4 py-6 text-center text-sm text-slate-400">
+                    <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
                       {emptyText}
                     </div>
                   )}
 
                   {rows.length > 0 && (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       {[
                         { key: 'cny', label: '人民币', items: buckets.cny },
                         { key: 'foreign', label: '外币', items: buckets.foreign },
                       ].map((bucket) => (
-                        <div key={bucket.key}>
-                          <div className="mb-2 flex items-center justify-between gap-3">
+                        <div key={bucket.key} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
+                          <div className="mb-3 flex items-center justify-between gap-3">
                             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{bucket.label}</div>
-                            <div className="text-[11px] font-mono font-bold text-slate-500">
+                            <div className="rounded-full bg-white px-3 py-1 text-[11px] font-mono font-bold text-slate-500 shadow-sm">
                               {bucket.label === '人民币'
                                 ? `¥${calculateSignedTotal(bucket.items).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
                                 : `外币=${calculateSignedTotal(bucket.items).toLocaleString('en-US', { maximumFractionDigits: 2 })} / 人民币=${calculateSignedTotalCNYEquivalent(bucket.items, exchangeRate, usdRate).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
                             </div>
                           </div>
                           {bucket.items.length === 0 ? (
-                            <div className="rounded-[14px] border border-dashed border-[#e5dcc9] bg-[#fcfaf4] px-3 py-3 text-xs text-slate-400">
+                            <div className="rounded-[16px] border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-400">
                               暂无
                             </div>
                           ) : (
-                            <div className="grid gap-2 grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
+                            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-6">
                               {bucket.items.map((detail) => (
-                                <div key={`${owner}-${bucket.key}-${detail.accountId}`} className="rounded-[16px] border border-[#ece2d0] bg-[#fcfaf4] px-3 py-3">
+                                <div key={`${owner}-${bucket.key}-${detail.accountId}`} className="rounded-[18px] border border-slate-200 bg-white px-3.5 py-3 shadow-[0_16px_32px_-30px_rgba(15,23,42,0.5)]">
                                   <div className="flex items-start justify-between gap-2">
                                     {editable ? (
                                       <input
                                         type="text"
                                         value={detail.name}
                                         onChange={(e) => onNameChange?.(detail, e.target.value)}
-                                        className="w-full rounded-lg border border-[#dfd3be] bg-white px-2 py-1.5 text-sm font-semibold text-slate-800 outline-none"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm font-semibold text-slate-800 outline-none"
                                       />
                                     ) : (
                                       <div className="truncate text-sm font-semibold text-slate-800">{normalizeDisplayName(detail.name, detail.currency)}</div>
@@ -478,21 +571,21 @@ const DetailSection: React.FC<{
                                         <button
                                           type="button"
                                           onClick={() => onMoveDetail?.(detail, 'up')}
-                                          className="rounded-lg bg-slate-100 p-1 text-slate-500"
+                                          className="rounded-lg bg-slate-100 p-1 text-slate-500 transition hover:bg-slate-200"
                                         >
                                           <ArrowUp size={12} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => onMoveDetail?.(detail, 'down')}
-                                          className="rounded-lg bg-slate-100 p-1 text-slate-500"
+                                          className="rounded-lg bg-slate-100 p-1 text-slate-500 transition hover:bg-slate-200"
                                         >
                                           <ArrowDown size={12} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => onDeleteDetail?.(detail)}
-                                          className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600"
+                                          className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100"
                                         >
                                           删除
                                         </button>
@@ -506,10 +599,10 @@ const DetailSection: React.FC<{
                                       inputMode="decimal"
                                       value={getBalanceInputValue(detail, balanceInputMap, specialBalanceInputMap)}
                                       onChange={(e) => onBalanceChange?.(detail, e.target.value)}
-                                      className={`mt-2 w-full rounded-lg border px-2.5 py-2 font-mono text-sm font-bold outline-none ${isSubtractingDetail(detail) ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-[#dfd3be] bg-white text-slate-800'}`}
+                                      className={`mt-2.5 w-full rounded-xl border px-2.5 py-2 font-mono text-sm font-bold outline-none ${isSubtractingDetail(detail) ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-800'}`}
                                     />
                                   ) : (
-                                    <div className={`mt-2 font-mono text-sm font-bold ${isSubtractingDetail(detail) ? 'text-rose-600' : 'text-slate-800'}`}>
+                                    <div className={`mt-2.5 font-mono text-sm font-bold ${isSubtractingDetail(detail) ? 'text-rose-600' : 'text-slate-800'}`}>
                                       {getCurrencySymbol(detail.currency)}
                                       {detail.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })}
                                     </div>
@@ -1231,10 +1324,12 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-500">
-          <Loader2 size={20} className="animate-spin" />
-          <span>正在读取快照数据...</span>
+      <div className="flex min-h-screen items-center justify-center bg-transparent px-6">
+        <div className="rounded-[30px] border border-slate-200 bg-white/90 px-8 py-8 shadow-[0_35px_90px_-55px_rgba(15,23,42,0.45)] backdrop-blur">
+          <div className="flex items-center gap-3 text-slate-600">
+            <Loader2 size={20} className="animate-spin" />
+            <span className="font-medium">正在读取快照数据...</span>
+          </div>
         </div>
       </div>
     );
@@ -1242,14 +1337,14 @@ const App: React.FC = () => {
 
   if (serverError) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-[30px] border border-rose-100 bg-white p-8 shadow-soft">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
+        <div className="w-full max-w-xl rounded-[32px] border border-rose-100 bg-white/95 p-8 shadow-[0_40px_100px_-60px_rgba(244,63,94,0.45)] backdrop-blur">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-rose-50 text-rose-600">
             <ServerCrash size={24} />
           </div>
-          <h1 className="text-xl font-bold text-slate-800">本地数据库服务未启动</h1>
+          <h1 className="font-display text-2xl font-bold text-slate-900">本地数据库服务未启动</h1>
           <p className="mt-3 text-sm leading-7 text-slate-500">{serverError}</p>
-          <pre className="mt-4 rounded-2xl bg-slate-50 p-4 text-xs text-slate-700">{`npm install\nnpm run dev`}</pre>
+          <pre className="mt-5 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">{`npm install\nnpm run dev`}</pre>
         </div>
       </div>
     );
@@ -1257,9 +1352,9 @@ const App: React.FC = () => {
 
   if (!selectedSnapshot) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center p-6">
-        <div className="rounded-[30px] border border-[#e6decd] bg-brand-paper px-6 py-10 text-center shadow-soft">
-          <div className="text-lg font-bold text-brand-navy">还没有可查看的期别</div>
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6">
+        <div className="rounded-[32px] border border-slate-200 bg-white/95 px-6 py-10 text-center shadow-[0_35px_90px_-55px_rgba(15,23,42,0.45)] backdrop-blur">
+          <div className="font-display text-xl font-bold text-slate-900">还没有可查看的期别</div>
           <p className="mt-3 text-sm text-slate-500">数据库里暂无快照记录。</p>
         </div>
       </div>
@@ -1267,40 +1362,75 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-transparent pb-16">
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-        <div className="rounded-[30px] border border-[#ddd2bc] bg-[linear-gradient(135deg,#173329_0%,#305342_100%)] p-5 text-white shadow-soft sm:p-6">
-          <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-100/70">Snapshot Ledger</div>
-          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-display text-3xl font-bold">各期余额总览</h1>
-              <p className="mt-2.5 max-w-2xl text-sm leading-6 text-emerald-50/80">
-                主页只做一件事：选一个期别，然后看那个时间点的余额情况。上半部分是通用账户，下半部分是当期特有项目。
+    <div className="min-h-screen bg-transparent pb-16 text-slate-800">
+      <div className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 lg:px-8">
+        <div className="rounded-[34px] border border-slate-200/70 bg-[linear-gradient(135deg,#0f172a_0%,#16213c_35%,#1f4f46_100%)] p-5 text-white shadow-[0_45px_120px_-60px_rgba(15,23,42,0.75)] sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.26em] text-emerald-50/80 backdrop-blur">
+                <ShieldCheck size={13} />
+                OZLedger Pro
+              </div>
+              <h1 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">资产快照工作台</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200/78 sm:text-[15px]">
+                面向连续期别管理的余额总览、变动解释、补录与回滚工作区。所有原有功能和数据保持不变，这一版只把操作体验整理成更像正式商用软件的工作台。
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[20px] border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-50/60">当前选中</div>
-                <div className="mt-2 font-mono text-lg font-bold">{selectedSnapshot.date}</div>
+
+            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[600px]">
+              <div className="rounded-[22px] border border-white/12 bg-white/10 px-4 py-3.5 backdrop-blur">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-200/65">
+                  <CalendarDays size={12} />
+                  当前期别
+                </div>
+                <div className="mt-2 font-display text-xl font-bold">{selectedSnapshot.date}</div>
+                <div className="mt-1 text-xs text-slate-200/65">已选中查看与编辑</div>
               </div>
-              <div className="rounded-[20px] border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-50/60">期别总资产</div>
-                <div className="mt-2 font-mono text-lg font-bold">¥{selectedSnapshot.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+              <div className="rounded-[22px] border border-white/12 bg-white/10 px-4 py-3.5 backdrop-blur">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-200/65">
+                  <CircleDollarSign size={12} />
+                  快照总额
+                </div>
+                <div className="mt-2 font-mono text-xl font-bold">¥{selectedSnapshot.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+                <div className="mt-1 text-xs text-slate-200/65">按当前汇率折算后的总资产</div>
               </div>
-              <div className="rounded-[20px] border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-emerald-50/60">{settings.storageMode || 'sqlite'}</div>
-                <div className="mt-2 text-sm font-semibold">{meta.dbPath || 'data/ozledger.sqlite'}</div>
-                {meta.dbTargetHost ? (
-                  <div className="mt-1 text-[11px] text-emerald-50/60">cloud target: {meta.dbTargetHost}</div>
-                ) : null}
+              <div className="rounded-[22px] border border-white/12 bg-white/10 px-4 py-3.5 backdrop-blur">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-200/65">
+                  <Database size={12} />
+                  存储引擎
+                </div>
+                <div className="mt-2 text-sm font-semibold">{settings.storageMode || 'sqlite'}</div>
+                <div className="mt-1 truncate text-xs text-slate-200/65">{meta.dbTargetHost || meta.dbPath || 'data/ozledger.sqlite'}</div>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 lg:grid-cols-4">
+            <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-3.5 backdrop-blur">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-200/65">同步状态</div>
+              <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-white">
+                <BadgeCheck size={15} className="text-emerald-300" />
+                数据库在线
+              </div>
+            </div>
+            <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-3.5 backdrop-blur">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-200/65">最近写入</div>
+              <div className="mt-2 text-sm font-semibold text-white">{formatLocalDateTime(settings.lastSavedAt)}</div>
+            </div>
+            <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-3.5 backdrop-blur">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-200/65">快照数量</div>
+              <div className="mt-2 text-sm font-semibold text-white">{activeSnapshots.length} 期有效记录</div>
+            </div>
+            <div className="rounded-[22px] border border-white/12 bg-white/8 px-4 py-3.5 backdrop-blur">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-200/65">数据路径</div>
+              <div className="mt-2 truncate text-sm font-semibold text-white">{meta.dbPath || 'data/ozledger.sqlite'}</div>
             </div>
           </div>
         </div>
 
-        <section className="mt-5 rounded-[24px] border border-[#e6decd] bg-brand-paper px-4 py-4 shadow-soft sm:px-5">
+        <section className="mt-5 rounded-[28px] border border-slate-200/80 bg-white/90 px-4 py-4 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:px-5">
           {(saveError || saveSuccess) && (
-            <div className={`mb-3 rounded-[18px] border px-4 py-3 text-sm ${
+            <div className={`mb-4 rounded-[20px] border px-4 py-3 text-sm ${
               saveError
                 ? 'border-rose-200 bg-rose-50 text-rose-700'
                 : 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -1308,32 +1438,46 @@ const App: React.FC = () => {
               {saveError || saveSuccess}
             </div>
           )}
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">最新一期澳币净余额</div>
-              <div className="mt-2 font-mono text-lg font-bold text-brand-navy">
-                ${spendableCash.audNet.toLocaleString('en-AU', { maximumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">最新一期人民币净余额</div>
-              <div className="mt-2 font-mono text-lg font-bold text-brand-navy">
-                ¥{spendableCash.cnyNet.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
-              </div>
-            </div>
+          <div className="grid gap-3 xl:grid-cols-4">
+            <MetricCard
+              label="最新可支配澳币"
+              value={`$${spendableCash.audNet.toLocaleString('en-AU', { maximumFractionDigits: 2 })}`}
+              hint="排除了家庭长期项目与待报销项"
+              icon={<WalletCards size={18} />}
+              tone="accent"
+            />
+            <MetricCard
+              label="最新可支配人民币"
+              value={`¥${spendableCash.cnyNet.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}`}
+              hint="最新一期现金流观察位"
+              icon={<CircleDollarSign size={18} />}
+              tone="success"
+            />
+            <MetricCard
+              label="当前汇率"
+              value={`AUD/CNY ${selectedExchangeRate.toLocaleString('en-US', { maximumFractionDigits: 4 })}`}
+              hint={`USD/AUD ${selectedUsdRate.toLocaleString('en-US', { maximumFractionDigits: 4 })}`}
+              icon={<Building2 size={18} />}
+            />
+            <MetricCard
+              label="最后同步"
+              value={formatLocalDateTime(settings.lastSavedAt)}
+              hint={meta.dbTargetHost ? `数据库主机 ${meta.dbTargetHost}` : '本地与线上配置已接通'}
+              icon={<Clock3 size={18} />}
+            />
           </div>
         </section>
 
-        <section className="mt-5 overflow-hidden rounded-[28px] border border-[#e6decd] bg-brand-paper shadow-soft">
-          <div className="border-b border-[#ece1cc] bg-[#f8f2e4] px-4 py-4 sm:px-5">
+        <section className="mt-5 overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/90 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]">
+          <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] px-5 py-4 sm:px-6">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
               <CalendarDays size={13} />
-              历史期别
+              历史期别导航
             </div>
-            <p className="mt-1.5 text-sm text-slate-500">横向选择一个期别，下面立即切换到该期余额详情。</p>
+            <p className="mt-2 text-sm text-slate-500">像时间轴一样切换任一期别，下面的账户、说明、差异和备份操作都会跟着切换。</p>
           </div>
-          <div className="overflow-x-auto px-4 py-4 sm:px-5">
-            <div className="flex min-w-max gap-3">
+          <div className="overflow-x-auto px-5 py-5 sm:px-6">
+            <div className="flex min-w-max gap-3 pb-1">
               {activeSnapshots.map((snapshot) => {
                 const isActive = snapshot.id === selectedSnapshot.id;
                 return (
@@ -1341,14 +1485,15 @@ const App: React.FC = () => {
                     key={snapshot.id}
                     type="button"
                     onClick={() => setSelectedSnapshotId(snapshot.id)}
-                    className={`min-w-[148px] rounded-[20px] border px-4 py-3 text-left transition-colors ${
+                    className={`min-w-[170px] rounded-[24px] border px-4 py-3.5 text-left transition-all ${
                       isActive
-                        ? 'border-[#18352a] bg-[#18352a] text-white'
-                        : 'border-[#e4dac8] bg-white text-slate-700 hover:bg-[#fcfaf4]'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.75)]'
+                        : 'border-slate-200 bg-slate-50/90 text-slate-700 hover:-translate-y-0.5 hover:bg-white'
                     }`}
                   >
-                    <div className="font-mono text-sm font-bold">{snapshot.date}</div>
-                    <div className={`mt-2 text-xs ${isActive ? 'text-emerald-50/70' : 'text-slate-400'}`}>
+                    <div className="text-[11px] uppercase tracking-[0.2em] opacity-70">Snapshot</div>
+                    <div className="mt-2 font-display text-base font-bold">{snapshot.date}</div>
+                    <div className={`mt-3 text-xs ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
                       ¥{snapshot.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
                     </div>
                   </button>
@@ -1358,69 +1503,65 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-3 md:grid-cols-4">
-          <div className="rounded-[22px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              <CalendarDays size={13} />
-              选中期别
-            </div>
-            <div className="mt-2.5 text-xl font-bold text-brand-navy">{selectedSnapshot.date}</div>
-          </div>
-          <div className="rounded-[22px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              <Layers3 size={13} />
-              通用账户
-            </div>
-            <div className="mt-2.5 text-xl font-bold text-brand-navy">{commonDetails.length}</div>
-          </div>
-          <div className="rounded-[22px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              <NotebookPen size={13} />
-              当期特有
-            </div>
-            <div className="mt-2.5 text-xl font-bold text-brand-navy">{specificDetails.length}</div>
-          </div>
-          <div className="rounded-[22px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              <Database size={13} />
-              当期汇率
-            </div>
-            <div className="mt-2.5 space-y-1 text-sm font-mono font-bold text-brand-navy">
-              <div>AUD/CNY {selectedExchangeRate.toLocaleString('en-US', { maximumFractionDigits: 4 })}</div>
-              <div>USD/AUD {selectedUsdRate.toLocaleString('en-US', { maximumFractionDigits: 4 })}</div>
-            </div>
-          </div>
+        <section className="mt-5 grid gap-3 xl:grid-cols-4">
+          <MetricCard
+            label="选中期别"
+            value={selectedSnapshot.date}
+            hint="当前工作上下文"
+            icon={<CalendarDays size={18} />}
+          />
+          <MetricCard
+            label="通用账户"
+            value={`${commonDetails.length}`}
+            hint="长期重复出现的核心账户"
+            icon={<Layers3 size={18} />}
+          />
+          <MetricCard
+            label="当期特有"
+            value={`${specificDetails.length}`}
+            hint="一次性项目与折叠明细"
+            icon={<NotebookPen size={18} />}
+          />
+          <MetricCard
+            label="数据库状态"
+            value={settings.storageMode || 'sqlite'}
+            hint={meta.dbTargetHost ? `target ${meta.dbTargetHost}` : meta.dbPath || '本地文件库'}
+            icon={<Database size={18} />}
+          />
         </section>
 
         {overallChange && (
-          <section className="mt-5 rounded-[24px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
-            <div className="flex items-center justify-between gap-4">
+          <section className="mt-5 rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">整体资金变化</div>
-                <div className="mt-1 text-sm text-slate-500">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                  <Sparkles size={13} />
+                  整体资金变化
+                </div>
+                <div className="mt-2 text-sm text-slate-500">
                   对比 {selectedSnapshot.date} 和上一期 {previousSnapshot?.date}
                 </div>
               </div>
-              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ${overallChange.totalCNY >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${overallChange.totalCNY >= 0 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'}`}>
                 {overallChange.totalCNY >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
                 {overallChange.totalCNY >= 0 ? '+' : ''}¥{overallChange.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 px-4 py-3.5">
                 <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">人民币变化</div>
                 <div className={`mt-2 font-mono text-base font-bold ${overallChange.cnyChange >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   {overallChange.cnyChange >= 0 ? '+' : ''}¥{overallChange.cnyChange.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 px-4 py-3.5">
                 <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">澳币变化</div>
                 <div className={`mt-2 font-mono text-base font-bold ${overallChange.audChange >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   {overallChange.audChange >= 0 ? '+' : ''}${overallChange.audChange.toLocaleString('en-AU', { maximumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className="rounded-[18px] border border-[#e8dfcf] bg-white px-4 py-3">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 px-4 py-3.5">
                 <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">美元变化</div>
                 <div className={`mt-2 font-mono text-base font-bold ${overallChange.usdChange >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   {overallChange.usdChange >= 0 ? '+' : ''}U${overallChange.usdChange.toLocaleString('en-US', { maximumFractionDigits: 2 })}
@@ -1428,7 +1569,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-3">
+            <div className="mt-5 grid gap-3 xl:grid-cols-3">
               <ChangeList
                 title="新增项目"
                 emptyText="这一期没有新增项目。"
@@ -1448,22 +1589,28 @@ const App: React.FC = () => {
           </section>
         )}
 
-        <section className="mt-5 rounded-[28px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">该期说明</div>
+        <section className="mt-5 rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)] sm:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="xl:w-[220px]">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                <NotebookPen size={13} />
+                期别说明
+              </div>
               {isEditing ? (
-                <div className="mt-2 rounded-xl border border-[#d6d9cf] bg-[#f4f7f0] px-3 py-2.5">
+                <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-3">
                   <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">自动重算</div>
-                  <div className="mt-1 font-mono text-base font-bold text-brand-navy">
+                  <div className="mt-1.5 font-mono text-base font-bold text-slate-900">
                     ¥{computedDraftTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 text-base font-bold text-brand-navy">¥{selectedSnapshot.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">期别总额</div>
+                  <div className="mt-1.5 text-base font-bold text-slate-900">¥{selectedSnapshot.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}</div>
+                </div>
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 rounded-[26px] border border-slate-200 bg-slate-50/60 p-4">
               {isEditing ? (
                 <div className="space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
@@ -1473,7 +1620,7 @@ const App: React.FC = () => {
                       value={draftExchangeRate}
                       onChange={(e) => setDraftExchangeRate(e.target.value)}
                       placeholder="AUD/CNY"
-                      className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
+                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
                     />
                     <input
                       type="text"
@@ -1481,67 +1628,31 @@ const App: React.FC = () => {
                       value={draftUsdRate}
                       onChange={(e) => setDraftUsdRate(e.target.value)}
                       placeholder="USD/AUD"
-                      className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
+                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
                     />
                   </div>
                   <textarea
                     value={draftBaseNote}
                     onChange={(e) => setDraftBaseNote(e.target.value)}
                     placeholder="补充说明，这里不会自动覆盖一次性项目列表。"
-                    className="min-h-[96px] w-full rounded-2xl border border-[#dfd3be] bg-white px-4 py-3 text-sm leading-6 text-slate-600 outline-none"
+                    className="min-h-[120px] w-full rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 outline-none"
                   />
                 </div>
               ) : (
-                <div className="max-w-3xl text-sm leading-6 text-slate-500">{selectedSnapshot.note || '无备注'}</div>
+                <div className="max-w-4xl text-sm leading-7 text-slate-600">{selectedSnapshot.note || '无备注'}</div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 xl:w-[360px] xl:justify-end">
               {isEditing ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleSaveSnapshotEdits}
-                    disabled={isSaving}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-[#18352a] px-4 py-2.5 text-sm font-bold text-white"
-                  >
-                    <Save size={15} />
-                    {isSaving ? '保存中…' : '保存修改'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelEditing}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-[#ddd2bc] bg-white px-4 py-2.5 text-sm font-bold text-slate-600"
-                  >
-                    <X size={15} />
-                    取消
-                  </button>
+                  <ActionButton label={isSaving ? '保存中…' : '保存修改'} icon={<Save size={15} />} onClick={handleSaveSnapshotEdits} disabled={isSaving} variant="primary" />
+                  <ActionButton label="取消" icon={<X size={15} />} onClick={cancelEditing} variant="ghost" />
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => startCreating('new')}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-[#18352a] px-4 py-2.5 text-sm font-bold text-white"
-                  >
-                    <CalendarDays size={15} />
-                    新增新一期
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => startCreating('backfill')}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-[#ddd2bc] bg-white px-4 py-2.5 text-sm font-bold text-slate-700"
-                  >
-                    <NotebookPen size={15} />
-                    手动补录漏期
-                  </button>
-                  <button
-                    type="button"
-                    onClick={startEditing}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-[#ddd2bc] bg-white px-4 py-2.5 text-sm font-bold text-slate-700"
-                  >
-                    <PencilLine size={15} />
-                    手动修改这一期
-                  </button>
+                  <ActionButton label="新增新一期" icon={<CalendarDays size={15} />} onClick={() => startCreating('new')} variant="primary" />
+                  <ActionButton label="手动补录漏期" icon={<NotebookPen size={15} />} onClick={() => startCreating('backfill')} />
+                  <ActionButton label="手动修改这一期" icon={<PencilLine size={15} />} onClick={startEditing} />
                 </>
               )}
             </div>
@@ -1549,10 +1660,11 @@ const App: React.FC = () => {
         </section>
 
         {isCreating && (
-          <section className="mt-5 rounded-[28px] border border-[#d8cfbe] bg-[#fffaf0] p-4 shadow-soft sm:p-5">
+          <section className="mt-5 rounded-[30px] border border-sky-200/70 bg-[linear-gradient(180deg,#f8fbff_0%,#f8fafc_100%)] p-5 shadow-[0_24px_60px_-42px_rgba(14,165,233,0.35)] sm:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                  <Sparkles size={13} />
                   {createKind === 'new' ? '新增新一期' : '手动补录漏期'}
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -1560,23 +1672,8 @@ const App: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveNewSnapshot}
-                  disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-[#18352a] px-4 py-2.5 text-sm font-bold text-white"
-                >
-                  <Save size={15} />
-                  {isSaving ? '保存中…' : '保存新期别'}
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelCreating}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-[#ddd2bc] bg-white px-4 py-2.5 text-sm font-bold text-slate-600"
-                >
-                  <X size={15} />
-                  取消
-                </button>
+                <ActionButton label={isSaving ? '保存中…' : '保存新期别'} icon={<Save size={15} />} onClick={handleSaveNewSnapshot} disabled={isSaving} variant="primary" />
+                <ActionButton label="取消" icon={<X size={15} />} onClick={cancelCreating} variant="ghost" />
               </div>
             </div>
 
@@ -1588,7 +1685,7 @@ const App: React.FC = () => {
                 className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
               />
               {createKind === 'new' ? (
-                <div className="rounded-xl border border-[#d6d9cf] bg-[#f4f7f0] px-3 py-2.5">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
                   <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">自动计算总资产</div>
                   <div className="mt-1 font-mono text-sm font-bold text-brand-navy">
                     ¥{computedCreateTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
@@ -1601,7 +1698,7 @@ const App: React.FC = () => {
                   value={createTotal}
                   onChange={(e) => setCreateTotal(e.target.value)}
                   placeholder="期别总资产"
-                  className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
                 />
               )}
               <input
@@ -1610,7 +1707,7 @@ const App: React.FC = () => {
                 value={createExchangeRate}
                 onChange={(e) => setCreateExchangeRate(e.target.value)}
                 placeholder="AUD/CNY"
-                className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
               />
               <input
                 type="text"
@@ -1618,14 +1715,14 @@ const App: React.FC = () => {
                 value={createUsdRate}
                 onChange={(e) => setCreateUsdRate(e.target.value)}
                 placeholder="USD/AUD"
-                className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none"
               />
               <input
                 type="text"
                 value={createBaseNote}
                 onChange={(e) => setCreateBaseNote(e.target.value)}
                 placeholder="备注，可留空"
-                className="rounded-xl border border-[#dfd3be] bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none"
               />
             </div>
 
@@ -1641,21 +1738,21 @@ const App: React.FC = () => {
             )}
 
             <div className="mt-5 space-y-5">
-              <section className="rounded-[24px] border border-[#e6decd] bg-white p-4">
+              <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.35)]">
                 <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">通用账户维护</div>
                 <div className="mt-3 grid gap-3 md:grid-cols-[120px_120px_1fr_100px]">
-                  <select value={commonDraftOwner} onChange={(e) => setCommonDraftOwner(e.target.value as HistoricalAccountDetail['owner'])} className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none">
+                  <select value={commonDraftOwner} onChange={(e) => setCommonDraftOwner(e.target.value as HistoricalAccountDetail['owner'])} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
                     <option value="小盛">小盛</option>
                     <option value="大王">大王</option>
                     <option value="家庭">家庭</option>
                   </select>
-                  <select value={commonDraftCurrency} onChange={(e) => setCommonDraftCurrency(e.target.value as 'CNY' | 'AUD' | 'USD')} className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none">
+                  <select value={commonDraftCurrency} onChange={(e) => setCommonDraftCurrency(e.target.value as 'CNY' | 'AUD' | 'USD')} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
                     <option value="CNY">CNY</option>
                     <option value="AUD">AUD</option>
                     <option value="USD">USD</option>
                   </select>
-                  <input value={commonDraftName} onChange={(e) => setCommonDraftName(e.target.value)} placeholder="新增通用账户名称" className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none" />
-                  <button type="button" onClick={() => addCommonAccountRow(true)} className="rounded-xl bg-[#18352a] px-3 py-2 text-sm font-bold text-white">新增</button>
+                  <input value={commonDraftName} onChange={(e) => setCommonDraftName(e.target.value)} placeholder="新增通用账户名称" className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none" />
+                  <button type="button" onClick={() => addCommonAccountRow(true)} className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-bold text-white transition hover:bg-slate-800">新增</button>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {displayedCreateCommonDetails.map((detail) => (
@@ -1704,7 +1801,7 @@ const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={addCreateSpecialItem}
-                  className="rounded-xl border border-[#ddd2bc] bg-white px-3 py-2 text-xs font-bold text-slate-600"
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
                 >
                   新增一次性项目
                 </button>
@@ -1716,21 +1813,21 @@ const App: React.FC = () => {
         {!isCreating && (
         <div className="mt-5 space-y-5">
           {isEditing && (
-            <section className="rounded-[24px] border border-[#e6decd] bg-white p-4 shadow-soft">
+            <section className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.35)]">
               <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">通用账户维护</div>
               <div className="mt-3 grid gap-3 md:grid-cols-[120px_120px_1fr_100px]">
-                <select value={commonDraftOwner} onChange={(e) => setCommonDraftOwner(e.target.value as HistoricalAccountDetail['owner'])} className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none">
+                <select value={commonDraftOwner} onChange={(e) => setCommonDraftOwner(e.target.value as HistoricalAccountDetail['owner'])} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
                   <option value="小盛">小盛</option>
                   <option value="大王">大王</option>
                   <option value="家庭">家庭</option>
                 </select>
-                <select value={commonDraftCurrency} onChange={(e) => setCommonDraftCurrency(e.target.value as 'CNY' | 'AUD' | 'USD')} className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none">
+                <select value={commonDraftCurrency} onChange={(e) => setCommonDraftCurrency(e.target.value as 'CNY' | 'AUD' | 'USD')} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
                   <option value="CNY">CNY</option>
                   <option value="AUD">AUD</option>
                   <option value="USD">USD</option>
                 </select>
-                <input value={commonDraftName} onChange={(e) => setCommonDraftName(e.target.value)} placeholder="新增通用账户名称" className="rounded-xl border border-[#dfd3be] bg-[#fcfaf4] px-3 py-2 text-sm outline-none" />
-                <button type="button" onClick={() => addCommonAccountRow(false)} className="rounded-xl bg-[#18352a] px-3 py-2 text-sm font-bold text-white">新增</button>
+                <input value={commonDraftName} onChange={(e) => setCommonDraftName(e.target.value)} placeholder="新增通用账户名称" className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none" />
+                <button type="button" onClick={() => addCommonAccountRow(false)} className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-bold text-white transition hover:bg-slate-800">新增</button>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {displayedCommonDetails.map((detail) => (
@@ -1783,33 +1880,36 @@ const App: React.FC = () => {
             <button
               type="button"
               onClick={addSpecialItem}
-              className="rounded-xl border border-[#ddd2bc] bg-white px-3 py-2 text-xs font-bold text-slate-600"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
             >
               新增一次性项目
             </button>
           </div>
         )}
 
-        <section className="mt-5 rounded-[24px] border border-[#e6decd] bg-brand-paper p-4 shadow-soft">
+        <section className="mt-5 rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">备份与回滚</div>
-              <div className="mt-1 text-sm text-slate-500">每次保存都会自动生成备份。这里可以回滚到最近的版本。</div>
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                <ShieldCheck size={13} />
+                备份与回滚
+              </div>
+              <div className="mt-2 text-sm text-slate-500">每次保存都会自动生成备份。这里保留最近的版本，方便回滚。</div>
             </div>
             <button
               type="button"
               onClick={async () => setBackupHistory(await api.getBackupHistory())}
-              className="rounded-xl border border-[#ddd2bc] bg-white px-3 py-2 text-xs font-bold text-slate-600"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
             >
               刷新列表
             </button>
           </div>
-          <div className="mt-4 grid gap-2">
+          <div className="mt-5 grid gap-3">
             {backupHistory.slice(0, 6).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between gap-3 rounded-[16px] border border-[#e8dfcf] bg-white px-3 py-2.5">
+              <div key={entry.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-slate-50/70 px-4 py-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-slate-800">{entry.summary}</div>
-                  <div className="mt-0.5 text-xs text-slate-400">
+                  <div className="mt-1 text-xs text-slate-400">
                     {new Date(entry.createdAt).toLocaleString('zh-CN', { hour12: false })} · {entry.fileName || entry.backupPath || '无文件名'}
                   </div>
                 </div>
@@ -1817,7 +1917,7 @@ const App: React.FC = () => {
                   type="button"
                   onClick={() => handleRestoreBackup(entry.fileName)}
                   disabled={isRestoringBackup === entry.fileName}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   <RotateCcw size={13} />
                   {isRestoringBackup === entry.fileName ? '回滚中' : '回滚'}
@@ -1827,10 +1927,11 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
+        <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <Database size={13} />
           <span>{settings.lastSavedAt ? `最近写入 ${new Date(settings.lastSavedAt).toLocaleString('zh-CN', { hour12: false })}` : 'SQLite 已连接'}</span>
           <span>· 变更日志：`data/change-log.md`</span>
+          <span>· 当前版本保持所有原有保存、补录、回滚能力</span>
         </div>
       </div>
     </div>
