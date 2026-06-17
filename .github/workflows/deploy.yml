@@ -24,7 +24,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: ".github,.gitignore,App.tsx,README.md,components,constants.tsx,deploy,ecosystem.config.cjs,index.html,index.tsx,metadata.json,package-lock.json,package.json,scripts,server,services,tsconfig.json,tsconfig.node.json,types.ts,vite.config.ts,.env.example"
+          source: ".github,.gitignore,App.tsx,README.md,components,constants.tsx,deploy,ecosystem.config.cjs,hooks,index.html,index.tsx,metadata.json,package-lock.json,package.json,pages,scripts,server,services,tsconfig.json,tsconfig.node.json,types.ts,utils,vite.config.ts,.env.example"
           target: ${{ secrets.DEPLOY_PATH }}
           overwrite: true
           rm: false
