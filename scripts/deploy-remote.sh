@@ -34,6 +34,10 @@ npm run build
 
 echo "[deploy] ensuring data dir"
 mkdir -p data/backups
+# Make sure the runtime user can write backups/sqlite here. The app process
+# writes an auto-backup file before every save; if data/ is owned by another
+# user (e.g. created by root), those writes fail with EACCES and saving 500s.
+chmod -R u+rwX data
 
 echo "[deploy] cleaning macOS metadata files"
 find . -name '._*' -delete
