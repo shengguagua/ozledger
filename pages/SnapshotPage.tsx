@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { CalendarDays, Layers3, NotebookPen, PencilLine, Save, Sparkles, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { AppSettings, AssetSnapshot, HistoricalAccountDetail } from '../types';
 import { ActionButton, ChangeList, MetricCard } from '../components/ui';
@@ -139,6 +139,37 @@ const SnapshotPage: React.FC<Props> = ({
   const rate = selectedSnapshot?.exchangeRate ?? settings.exchangeRate;
   const usdRate = selectedSnapshot?.usdRate ?? settings.usdRate;
 
+  // ⌘/Ctrl+S 保存，Esc 取消（仅在编辑/新增时生效）
+  useEffect(() => {
+    if (!isEditing && !isCreating) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (isSaving) return;
+        if (isEditing) handleSaveEdit(); else handleSaveCreate();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancel();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isEditing, isCreating, isSaving, handleSaveEdit, handleSaveCreate, cancel]);
+
+  // 选中期别后，自动把对应卡片滚动到可见区域
+  const activeCardRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    activeCardRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [selectedSnapshot?.id]);
+
+  // 编辑/新增进行中时，切换期别前先确认，避免误丢未保存的修改
+  const selectSnapshot = (id: string) => {
+    if (id === selectedSnapshot?.id) return;
+    if ((isEditing || isCreating) && !window.confirm('当前有未保存的修改，确定要切换期别并放弃修改吗？')) return;
+    cancel();
+    onSelectSnapshot(id);
+  };
+
   if (!selectedSnapshot) return <div className="text-slate-400 py-20 text-center">暂无快照数据。</div>;
 
   return (
@@ -167,14 +198,20 @@ const SnapshotPage: React.FC<Props> = ({
         </div>
         <div className="overflow-x-auto px-5 py-4">
           <div className="flex min-w-max gap-3">
-            {active.map((s) => {
+            {active.map((s, i) => {
               const isActive = s.id === selectedSnapshot.id;
+              const isLatest = i === 0;
               return (
-                <button key={s.id} type="button" onClick={() => { cancel(); onSelectSnapshot(s.id); }}
+                <button key={s.id} type="button" ref={isActive ? activeCardRef : undefined} onClick={() => selectSnapshot(s.id)}
                   className={`min-w-[160px] rounded-[22px] border px-4 py-3 text-left transition-all ${
                     isActive ? 'border-slate-900 bg-slate-900 text-white shadow-lg' : 'border-slate-200 bg-slate-50/90 text-slate-700 hover:-translate-y-0.5 hover:bg-white'
                   }`}>
-                  <div className="text-[10px] uppercase tracking-[0.2em] opacity-70">Snapshot</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[10px] uppercase tracking-[0.2em] opacity-70">Snapshot</div>
+                    {isLatest && (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isActive ? 'bg-emerald-400/90 text-slate-900' : 'bg-emerald-100 text-emerald-700'}`}>最新</span>
+                    )}
+                  </div>
                   <div className="mt-1.5 font-bold">{s.date}</div>
                   <div className={`mt-2 text-xs ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
                     ¥{s.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
@@ -236,6 +273,7 @@ const SnapshotPage: React.FC<Props> = ({
                 <ActionButton label={isSaving ? '保存中…' : '保存'} icon={<Save size={15} />}
                   onClick={isEditing ? handleSaveEdit : handleSaveCreate} disabled={isSaving} variant="primary" />
                 <ActionButton label="取消" icon={<X size={15} />} onClick={cancel} variant="ghost" />
+                <div className="text-[11px] text-slate-400 xl:text-center">⌘/Ctrl+S 保存 · Esc 取消</div>
               </>
             ) : (
               <>

@@ -29,11 +29,12 @@ const AppShell: React.FC<Props> = ({ page, onNav, dbLabel, lastSaved, children }
           type="button"
           onClick={() => onNav(p)}
           title={label}
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all ${
+          className={`flex w-12 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all ${
             page === p ? 'bg-white/15 text-white shadow-inner' : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
           }`}
         >
           {icon}
+          <span className="text-[10px] font-semibold tracking-wide">{label}</span>
         </button>
       ))}
       <div className="mt-auto">
