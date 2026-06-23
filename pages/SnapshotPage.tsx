@@ -6,7 +6,7 @@ import DetailSection from '../components/DetailSection';
 import { useSnapshotEditor } from '../hooks/useSnapshotEditor';
 import {
   getLogicalAccountKey, isCommonAccountDetail, normalizeLogicalAccountName,
-  normalizeDisplayName, parseLooseNumber, hasPositiveRate, hasMatchingManualTotal,
+  normalizeDisplayName, parseLooseNumber, hasPositiveRate,
 } from '../utils/snapshot';
 
 interface Props {
@@ -129,7 +129,6 @@ const SnapshotPage: React.FC<Props> = ({
   const handleSaveCreate = async () => {
     if (!ed.date) return;
     if (!hasPositiveRate(ed.exchangeRate, settings.exchangeRate) || !hasPositiveRate(ed.usdRate, settings.usdRate)) return;
-    if (ed.kind === 'backfill' && !hasMatchingManualTotal(ed.manualTotal, editor.computedTotal)) return;
     const next = editor.buildSnapshot();
     await onSaveCreate(next, editor);
   };
@@ -239,23 +238,12 @@ const SnapshotPage: React.FC<Props> = ({
                   <div className="grid gap-3 md:grid-cols-2">
                     <input type="date" value={ed.date} onChange={(e) => setField('date', e.target.value)}
                       className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none" />
-                    {ed.kind === 'backfill' ? (
-                      <input type="text" inputMode="decimal" value={ed.manualTotal} onChange={(e) => setField('manualTotal', e.target.value)}
-                        placeholder="手填总资产（补录校验用）" className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none" />
-                    ) : (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">自动计算</div>
-                        <div className="mt-1 font-mono text-sm font-bold text-slate-900">
-                          ¥{editor.computedTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
-                        </div>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">总资产（按明细自动计算）</div>
+                      <div className="mt-1 font-mono text-sm font-bold text-slate-900">
+                        ¥{editor.computedTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
                       </div>
-                    )}
-                  </div>
-                )}
-                {isCreating && ed.kind === 'backfill' && ed.manualTotal && (
-                  <div className={`rounded-xl border px-3 py-2 text-sm ${hasMatchingManualTotal(ed.manualTotal, editor.computedTotal) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-                    明细自动计算：¥{editor.computedTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
-                    {!hasMatchingManualTotal(ed.manualTotal, editor.computedTotal) && '，请对齐后再保存。'}
+                    </div>
                   </div>
                 )}
                 <textarea value={ed.baseNote} onChange={(e) => setField('baseNote', e.target.value)}
@@ -277,8 +265,7 @@ const SnapshotPage: React.FC<Props> = ({
               </>
             ) : (
               <>
-                <ActionButton label="新增新一期" icon={<CalendarDays size={15} />} onClick={() => startCreate('new', selectedSnapshot)} variant="primary" />
-                <ActionButton label="手动补录" icon={<NotebookPen size={15} />} onClick={() => startCreate('backfill', selectedSnapshot)} />
+                <ActionButton label="新增一期" icon={<CalendarDays size={15} />} onClick={() => startCreate(selectedSnapshot)} variant="primary" />
                 <ActionButton label="修改此期" icon={<PencilLine size={15} />} onClick={() => startEdit(selectedSnapshot)} />
               </>
             )}

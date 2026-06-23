@@ -56,10 +56,10 @@ export const useSnapshotEditor = (settings: AppSettings) => {
     });
   };
 
-  const startCreate = (kind: 'new' | 'backfill', snapshot: AssetSnapshot) => {
+  const startCreate = (snapshot: AssetSnapshot) => {
     const folded = parseFoldedItemsFromNote(snapshot.note).map((d, i) => ({ ...d, accountId: `${d.accountId}-${Date.now()}-${i}` }));
     setEditor({
-      mode: 'create', kind, date: kind === 'new' ? new Date().toISOString().split('T')[0] : '',
+      mode: 'create', kind: 'new', date: new Date().toISOString().split('T')[0],
       manualTotal: String(snapshot.totalCNY), baseNote: '',
       accountDetails: (snapshot.accountDetails || []).map((d) => ({ ...d })),
       balances: Object.fromEntries((snapshot.accountDetails || []).map((d) => [d.accountId, String(d.balance)])),
