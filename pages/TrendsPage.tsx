@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { AppSettings, AssetSnapshot } from '../types';
 import { toCNY, getCurrencySymbol } from '../utils/snapshot';
+import { Card, SectionLabel } from '../components/ui';
 
 interface Props {
   snapshots: AssetSnapshot[];
@@ -73,13 +74,13 @@ const TrendsPage: React.FC<Props> = ({ snapshots, settings }) => {
     });
   }, [active, settings]);
 
-  if (!latest) return <div className="text-slate-400 py-20 text-center">暂无快照数据。</div>;
+  if (!latest) return <div className="py-20 text-center font-serif text-ink-300">暂无快照数据。</div>;
 
-  const colorMap: Record<string, string> = { CNY: 'bg-blue-500', AUD: 'bg-emerald-500', USD: 'bg-amber-500' };
-  const ownerColors: Record<string, string> = { 小盛: 'bg-sky-500', 大王: 'bg-violet-500', 家庭: 'bg-amber-500' };
+  const colorMap: Record<string, string> = { CNY: 'bg-ink-700', AUD: 'bg-qing', USD: 'bg-zhe' };
+  const ownerColors: Record<string, string> = { 小盛: 'bg-qing', 大王: 'bg-zhe', 家庭: 'bg-dai' };
 
   return (
-    <div className="space-y-5 max-w-[1400px]">
+    <div className="max-w-[1400px] space-y-5">
       {/* Summary stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         {[
@@ -87,97 +88,96 @@ const TrendsPage: React.FC<Props> = ({ snapshots, settings }) => {
           { label: '近6期月均增长', value: `${avgGrowth6 >= 0 ? '+' : ''}${avgGrowth6.toFixed(2)}%`, pos: avgGrowth6 >= 0 },
           { label: '年化增速估算', value: `${(avgGrowth6 * 12) >= 0 ? '+' : ''}${(avgGrowth6 * 12).toFixed(1)}%`, pos: avgGrowth6 >= 0 },
         ].map(({ label, value, pos }) => (
-          <div key={label} className="rounded-[24px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_50px_-38px_rgba(15,23,42,0.35)]">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{label}</div>
-            <div className={`mt-3 text-2xl font-bold ${pos ? 'text-emerald-700' : 'text-rose-700'}`}>{value}</div>
-          </div>
+          <Card key={label} className="p-5">
+            <SectionLabel>{label}</SectionLabel>
+            <div className={`mt-3 font-mono text-2xl font-semibold ${pos ? 'text-gain' : 'text-loss'}`}>{value}</div>
+          </Card>
         ))}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
         {/* Monthly change */}
-        <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-4">月度变化（人民币）</div>
-          <div className="space-y-2">
+        <Card className="p-6">
+          <SectionLabel className="mb-5">月度变化（人民币）</SectionLabel>
+          <div className="space-y-2.5">
             {growthRates.map((r) => {
               const absMax = Math.max(...growthRates.map((x) => Math.abs(x.abs)), 1);
               const pct = (Math.abs(r.abs) / absMax) * 100;
               return (
                 <div key={r.date} className="flex items-center gap-3">
-                  <div className="w-14 shrink-0 text-right text-[11px] font-mono text-slate-400">{r.date}</div>
-                  <div className="flex-1 flex items-center gap-1 h-6">
-                    <div className="flex-1 flex justify-end">
-                      {r.abs < 0 && <div className="h-5 rounded-l-full bg-rose-200" style={{ width: `${pct}%` }} />}
+                  <div className="w-14 shrink-0 text-right font-mono text-[11px] text-ink-300">{r.date}</div>
+                  <div className="flex h-6 flex-1 items-center gap-1">
+                    <div className="flex flex-1 justify-end">
+                      {r.abs < 0 && <div className="h-5 rounded-l-full bg-loss/30" style={{ width: `${pct}%` }} />}
                     </div>
-                    <div className="w-px h-4 bg-slate-200 shrink-0" />
+                    <div className="h-4 w-px shrink-0 bg-ink-200" />
                     <div className="flex-1">
-                      {r.abs >= 0 && <div className="h-5 rounded-r-full bg-emerald-300" style={{ width: `${pct}%` }} />}
+                      {r.abs >= 0 && <div className="h-5 rounded-r-full bg-gain/35" style={{ width: `${pct}%` }} />}
                     </div>
                   </div>
-                  <div className={`w-20 shrink-0 text-right text-[11px] font-mono font-bold ${r.abs >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  <div className={`w-20 shrink-0 text-right font-mono text-[11px] font-semibold ${r.abs >= 0 ? 'text-gain' : 'text-loss'}`}>
                     {r.abs >= 0 ? '+' : ''}¥{(r.abs / 10000).toFixed(1)}万
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </Card>
 
-        {/* Currency breakdown */}
+        {/* Currency breakdown + spendable */}
         <div className="space-y-5">
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-4">货币结构（最新期）</div>
-            <div className="space-y-3">
+          <Card className="p-6">
+            <SectionLabel className="mb-5">货币结构（最新期）</SectionLabel>
+            <div className="space-y-3.5">
               {currencyBreakdown.map(({ currency, cnyVal, pct }) => (
                 <div key={currency}>
-                  <div className="flex justify-between mb-1">
+                  <div className="mb-1.5 flex justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${colorMap[currency] || 'bg-slate-400'}`} />
-                      <span className="text-sm font-semibold text-slate-800">{currency}</span>
+                      <span className={`h-2 w-2 rounded-full ${colorMap[currency] || 'bg-ink-400'}`} />
+                      <span className="font-serif text-sm text-ink-700">{currency}</span>
                     </div>
-                    <span className="text-sm font-mono font-bold text-slate-700">
-                      {getCurrencySymbol(currency)}{(cnyVal / (currency === 'CNY' ? 10000 : 1)).toFixed(currency === 'CNY' ? 1 : 0)}{currency === 'CNY' ? '万' : ''} <span className="text-slate-400 font-normal">({pct.toFixed(1)}%)</span>
+                    <span className="font-mono text-sm font-semibold text-ink-700">
+                      {getCurrencySymbol(currency)}{(cnyVal / (currency === 'CNY' ? 10000 : 1)).toFixed(currency === 'CNY' ? 1 : 0)}{currency === 'CNY' ? '万' : ''} <span className="font-normal text-ink-300">({pct.toFixed(1)}%)</span>
                     </span>
                   </div>
-                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${colorMap[currency] || 'bg-slate-400'}`} style={{ width: `${pct}%` }} />
+                  <div className="h-2.5 overflow-hidden rounded-full bg-ink-100/70">
+                    <div className={`h-full rounded-full ${colorMap[currency] || 'bg-ink-400'}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          {/* Spendable AUD trend */}
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-4">可支配澳币走势</div>
-            <div className="space-y-2">
+          <Card className="p-6">
+            <SectionLabel className="mb-5">可支配澳币走势</SectionLabel>
+            <div className="space-y-2.5">
               {spendableTrend.map((t) => (
                 <div key={t.date} className="flex items-center gap-3">
-                  <div className="w-14 shrink-0 text-right text-[11px] font-mono text-slate-400">{t.date}</div>
-                  <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${(t.aud / maxSpendable) * 100}%` }} />
+                  <div className="w-14 shrink-0 text-right font-mono text-[11px] text-ink-300">{t.date}</div>
+                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-ink-100/70">
+                    <div className="h-full rounded-full bg-qing transition-all" style={{ width: `${(t.aud / maxSpendable) * 100}%` }} />
                   </div>
-                  <div className="w-20 shrink-0 text-right text-[11px] font-mono font-bold text-sky-700">
+                  <div className="w-20 shrink-0 text-right font-mono text-[11px] font-semibold text-qing-600">
                     ${t.aud.toLocaleString('en-AU', { maximumFractionDigits: 0 })}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 
       {/* Per-owner trend */}
-      <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-4">各人资产走势（万元 CNY）</div>
+      <Card className="p-6">
+        <SectionLabel className="mb-5">各人资产走势（万元 CNY）</SectionLabel>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[11px] text-slate-400 uppercase tracking-wider">
-                <th className="text-left pb-3 pr-4">期别</th>
+              <tr className="font-serif text-[12px] text-ink-300">
+                <th className="pb-3 pr-4 text-left font-medium">期别</th>
                 {['小盛', '大王', '家庭'].map((o) => (
-                  <th key={o} className="text-right pb-3 px-3">
-                    <span className={`inline-flex items-center gap-1`}>
+                  <th key={o} className="px-3 pb-3 text-right font-medium">
+                    <span className="inline-flex items-center gap-1.5">
                       <span className={`h-2 w-2 rounded-full ${ownerColors[o]}`} />{o}
                     </span>
                   </th>
@@ -186,10 +186,10 @@ const TrendsPage: React.FC<Props> = ({ snapshots, settings }) => {
             </thead>
             <tbody>
               {ownerTrend.map((row) => (
-                <tr key={row.date} className="border-t border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-slate-500">{row.date}</td>
+                <tr key={row.date} className="border-t border-ink-100">
+                  <td className="py-2 pr-4 font-mono text-ink-400">{row.date}</td>
                   {['小盛', '大王', '家庭'].map((o) => (
-                    <td key={o} className="py-2 px-3 text-right font-mono font-bold text-slate-700">
+                    <td key={o} className="px-3 py-2 text-right font-mono font-semibold text-ink-700">
                       ¥{((row as Record<string, number | string>)[o] as number / 10000).toFixed(1)}万
                     </td>
                   ))}
@@ -198,7 +198,7 @@ const TrendsPage: React.FC<Props> = ({ snapshots, settings }) => {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

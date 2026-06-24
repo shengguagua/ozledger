@@ -2,10 +2,11 @@ import { HistoricalAccountDetail } from '../types';
 
 export const ownerOrder = ['小盛', '大王', '家庭'] as const;
 
+// 花青 / 赭石 / 黛 —— 国画矿物颜料配色
 export const ownerPalette = {
-  小盛: { badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20', panel: 'from-sky-500/8 via-white to-sky-500/5', dot: 'bg-sky-500' },
-  大王: { badge: 'bg-violet-500/10 text-violet-700 ring-1 ring-violet-500/20', panel: 'from-violet-500/8 via-white to-violet-500/5', dot: 'bg-violet-500' },
-  家庭: { badge: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20', panel: 'from-amber-500/10 via-white to-amber-500/5', dot: 'bg-amber-500' },
+  小盛: { badge: 'bg-qing/10 text-qing-600 ring-1 ring-qing/20', panel: 'from-qing/10 via-paper-50 to-paper-50', dot: 'bg-qing' },
+  大王: { badge: 'bg-zhe/10 text-zhe-600 ring-1 ring-zhe/20', panel: 'from-zhe/10 via-paper-50 to-paper-50', dot: 'bg-zhe' },
+  家庭: { badge: 'bg-dai/10 text-dai-600 ring-1 ring-dai/20', panel: 'from-dai/10 via-paper-50 to-paper-50', dot: 'bg-dai' },
 } as const;
 
 export const getCurrencySymbol = (currency: string) => {

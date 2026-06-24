@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { BadgeCheck, Building2, CircleDollarSign, Clock3, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { AppMeta, AppSettings, AssetSnapshot } from '../types';
-import { MetricCard } from '../components/ui';
+import { MetricCard, Card, SectionLabel } from '../components/ui';
 import { formatLocalDateTime, toCNY } from '../utils/snapshot';
 
 interface Props {
@@ -39,9 +39,9 @@ const DashboardPage: React.FC<Props> = ({ snapshots, settings, meta }) => {
       map.set(d.owner, (map.get(d.owner) || 0) + toCNY(d.balance, d.currency, rate, usdRate));
     }
     return [
-      { owner: '小盛', color: 'bg-sky-500', text: 'text-sky-700', total: map.get('小盛') || 0 },
-      { owner: '大王', color: 'bg-violet-500', text: 'text-violet-700', total: map.get('大王') || 0 },
-      { owner: '家庭', color: 'bg-amber-500', text: 'text-amber-700', total: map.get('家庭') || 0 },
+      { owner: '小盛', color: 'bg-qing', text: 'text-qing-600', total: map.get('小盛') || 0 },
+      { owner: '大王', color: 'bg-zhe', text: 'text-zhe-600', total: map.get('大王') || 0 },
+      { owner: '家庭', color: 'bg-dai', text: 'text-dai-600', total: map.get('家庭') || 0 },
     ];
   }, [latest, rate, usdRate]);
 
@@ -58,11 +58,11 @@ const DashboardPage: React.FC<Props> = ({ snapshots, settings, meta }) => {
   }, [active]);
 
   if (!latest) {
-    return <div className="text-slate-400 py-20 text-center">暂无快照数据。</div>;
+    return <div className="py-20 text-center font-serif text-ink-300">暂无快照数据。</div>;
   }
 
   return (
-    <div className="space-y-5 max-w-[1400px]">
+    <div className="max-w-[1400px] space-y-5">
       {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="可支配澳币" value={`$${spendable.aud.toLocaleString('en-AU', { maximumFractionDigits: 2 })}`}
@@ -77,89 +77,91 @@ const DashboardPage: React.FC<Props> = ({ snapshots, settings, meta }) => {
 
       <div className="grid gap-5 xl:grid-cols-3">
         {/* Trend chart */}
-        <div className="xl:col-span-2 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center justify-between mb-4">
+        <Card className="p-6 xl:col-span-2">
+          <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">总资产走势</div>
-              <div className="mt-1 text-2xl font-bold text-slate-900">
-                ¥{(latest.totalCNY / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 1 })} 万
+              <SectionLabel>总资产走势</SectionLabel>
+              <div className="mt-2 font-mono text-[28px] font-semibold tracking-tight text-ink-900">
+                ¥{(latest.totalCNY / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 1 })}
+                <span className="ml-1 font-serif text-base font-normal text-ink-400">万</span>
               </div>
             </div>
             {recentChange && (
-              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
-                recentChange.amount >= 0 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
+              <div className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 ${
+                recentChange.amount >= 0 ? 'bg-gain-100 text-gain-600 ring-gain/20' : 'bg-loss-100 text-loss-600 ring-loss/20'
               }`}>
                 {recentChange.amount >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
-                {recentChange.amount >= 0 ? '+' : ''}¥{(recentChange.amount / 10000).toFixed(1)}万 vs {recentChange.date}
+                <span className="font-mono">{recentChange.amount >= 0 ? '+' : ''}¥{(recentChange.amount / 10000).toFixed(1)}万</span>
+                <span className="text-ink-400">vs {recentChange.date}</span>
               </div>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {trendData.map((item) => (
               <div key={item.date} className="flex items-center gap-3">
-                <div className="w-14 shrink-0 text-right text-[11px] font-mono text-slate-400">{item.date}</div>
-                <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
+                <div className="w-14 shrink-0 text-right font-mono text-[11px] text-ink-300">{item.date}</div>
+                <div className="h-6 flex-1 overflow-hidden rounded-full bg-ink-100/70">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-slate-700 to-slate-500 transition-all duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-ink-800 to-ink-400 transition-all duration-500"
                     style={{ width: `${item.pct}%` }}
                   />
                 </div>
-                <div className="w-20 shrink-0 text-right text-[11px] font-mono font-bold text-slate-600">
+                <div className="w-20 shrink-0 text-right font-mono text-[11px] font-semibold text-ink-600">
                   ¥{(item.total / 10000).toFixed(1)}万
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         {/* Right column */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* By owner */}
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-4">按人分配</div>
-            <div className="space-y-3">
+          <Card className="p-6">
+            <SectionLabel className="mb-5">按人分配</SectionLabel>
+            <div className="space-y-3.5">
               {ownerTotals.map(({ owner, color, text, total }) => {
                 const grandTotal = ownerTotals.reduce((s, o) => s + Math.max(o.total, 0), 0);
                 const pct = grandTotal > 0 ? (Math.max(total, 0) / grandTotal) * 100 : 0;
                 return (
                   <div key={owner}>
-                    <div className="flex justify-between mb-1">
+                    <div className="mb-1.5 flex justify-between">
                       <div className="flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${color}`} />
-                        <span className="text-sm font-semibold text-slate-800">{owner}</span>
+                        <span className="font-serif text-sm text-ink-700">{owner}</span>
                       </div>
-                      <span className={`text-sm font-bold font-mono ${text}`}>
+                      <span className={`font-mono text-sm font-semibold ${text}`}>
                         ¥{(total / 10000).toFixed(1)}万
                       </span>
                     </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2 overflow-hidden rounded-full bg-ink-100/70">
                       <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </Card>
 
           {/* Status */}
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-3">系统状态</div>
+          <Card className="p-6">
+            <SectionLabel className="mb-4">系统状态</SectionLabel>
             <div className="space-y-2.5 text-sm">
-              <div className="flex items-center gap-2 text-emerald-700">
+              <div className="flex items-center gap-2 text-gain">
                 <BadgeCheck size={15} />
-                <span className="font-semibold">数据库在线</span>
+                <span className="font-medium">数据库在线</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>期别数量</span><span className="font-bold text-slate-700">{active.length} 期</span>
+              <div className="flex justify-between text-ink-400">
+                <span>期别数量</span><span className="font-mono font-semibold text-ink-700">{active.length} 期</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>存储引擎</span><span className="font-bold text-slate-700">{settings.storageMode || 'sqlite'}</span>
+              <div className="flex justify-between text-ink-400">
+                <span>存储引擎</span><span className="font-mono font-semibold text-ink-700">{settings.storageMode || 'sqlite'}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
-                <span>最新期别</span><span className="font-bold text-slate-700">{latest.date}</span>
+              <div className="flex justify-between text-ink-400">
+                <span>最新期别</span><span className="font-mono font-semibold text-ink-700">{latest.date}</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

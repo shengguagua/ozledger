@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { CalendarDays, Layers3, NotebookPen, PencilLine, Save, Sparkles, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { AppSettings, AssetSnapshot, HistoricalAccountDetail } from '../types';
-import { ActionButton, ChangeList, MetricCard } from '../components/ui';
+import { ActionButton, ChangeList, MetricCard, Card, SectionLabel } from '../components/ui';
 import DetailSection from '../components/DetailSection';
 import { useSnapshotEditor } from '../hooks/useSnapshotEditor';
 import {
@@ -20,6 +20,8 @@ interface Props {
   selectedSnapshotId: string;
   onSelectSnapshot: (id: string) => void;
 }
+
+const inputCls = 'rounded-xl border border-ink-200 bg-paper-50 px-3 py-2.5 text-sm text-ink-700 outline-none transition focus:border-ink-400';
 
 const SnapshotPage: React.FC<Props> = ({
   snapshots, settings, saveError, saveSuccess, isSaving,
@@ -169,13 +171,13 @@ const SnapshotPage: React.FC<Props> = ({
     onSelectSnapshot(id);
   };
 
-  if (!selectedSnapshot) return <div className="text-slate-400 py-20 text-center">暂无快照数据。</div>;
+  if (!selectedSnapshot) return <div className="py-20 text-center font-serif text-ink-300">暂无快照数据。</div>;
 
   return (
-    <div className="space-y-5 max-w-[1400px]">
+    <div className="max-w-[1400px] space-y-5">
       {/* Feedback */}
       {(saveError || saveSuccess) && (
-        <div className={`rounded-[20px] border px-4 py-3 text-sm ${saveError ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+        <div className={`rounded-xl border px-4 py-3 text-sm ${saveError ? 'border-loss/30 bg-loss-100 text-loss-600' : 'border-gain/30 bg-gain-100 text-gain-600'}`}>
           {saveError || saveSuccess}
         </div>
       )}
@@ -191,9 +193,9 @@ const SnapshotPage: React.FC<Props> = ({
       </div>
 
       {/* Snapshot timeline */}
-      <div className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/90 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-        <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-3">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">历史期别导航</div>
+      <Card className="overflow-hidden">
+        <div className="border-b border-ink-100 bg-paper/50 px-5 py-3">
+          <SectionLabel>历史期别导航</SectionLabel>
         </div>
         <div className="overflow-x-auto px-5 py-4">
           <div className="flex min-w-max gap-3">
@@ -202,17 +204,17 @@ const SnapshotPage: React.FC<Props> = ({
               const isLatest = i === 0;
               return (
                 <button key={s.id} type="button" ref={isActive ? activeCardRef : undefined} onClick={() => selectSnapshot(s.id)}
-                  className={`min-w-[160px] rounded-[22px] border px-4 py-3 text-left transition-all ${
-                    isActive ? 'border-slate-900 bg-slate-900 text-white shadow-lg' : 'border-slate-200 bg-slate-50/90 text-slate-700 hover:-translate-y-0.5 hover:bg-white'
+                  className={`min-w-[160px] rounded-xl border px-4 py-3 text-left transition-all ${
+                    isActive ? 'border-ink-800 bg-ink-800 text-paper-50 shadow-ink' : 'border-ink-200 bg-paper-50 text-ink-600 hover:-translate-y-0.5 hover:border-ink-300'
                   }`}>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] uppercase tracking-[0.2em] opacity-70">Snapshot</div>
+                    <div className="font-serif text-[10px] tracking-[0.18em] opacity-60">快照</div>
                     {isLatest && (
-                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isActive ? 'bg-emerald-400/90 text-slate-900' : 'bg-emerald-100 text-emerald-700'}`}>最新</span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isActive ? 'bg-cinnabar text-paper-50' : 'bg-cinnabar-100 text-cinnabar-600'}`}>最新</span>
                     )}
                   </div>
-                  <div className="mt-1.5 font-bold">{s.date}</div>
-                  <div className={`mt-2 text-xs ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
+                  <div className="mt-1.5 font-serif font-semibold">{s.date}</div>
+                  <div className={`mt-2 font-mono text-xs ${isActive ? 'text-paper-300' : 'text-ink-400'}`}>
                     ¥{s.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
                   </div>
                 </button>
@@ -220,27 +222,27 @@ const SnapshotPage: React.FC<Props> = ({
             })}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Note + actions */}
-      <div className="rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
+      <Card className="p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex-1 rounded-[22px] border border-slate-200 bg-slate-50/60 p-4">
+          <div className="flex-1 rounded-xl border border-ink-100 bg-paper/50 p-4">
             {isEditing || isCreating ? (
               <div className="space-y-3">
                 <div className="grid gap-3 md:grid-cols-2">
                   <input type="text" inputMode="decimal" value={ed.exchangeRate} onChange={(e) => setField('exchangeRate', e.target.value)}
-                    placeholder="AUD/CNY" className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none" />
+                    placeholder="AUD/CNY" className={`${inputCls} font-mono`} />
                   <input type="text" inputMode="decimal" value={ed.usdRate} onChange={(e) => setField('usdRate', e.target.value)}
-                    placeholder="USD/AUD" className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-700 outline-none" />
+                    placeholder="USD/AUD" className={`${inputCls} font-mono`} />
                 </div>
                 {isCreating && (
                   <div className="grid gap-3 md:grid-cols-2">
                     <input type="date" value={ed.date} onChange={(e) => setField('date', e.target.value)}
-                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none" />
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">总资产（按明细自动计算）</div>
-                      <div className="mt-1 font-mono text-sm font-bold text-slate-900">
+                      className={inputCls} />
+                    <div className="rounded-xl border border-gain/30 bg-gain-100/50 px-3 py-2.5">
+                      <div className="font-serif text-[11px] text-ink-400">总资产（按明细自动计算）</div>
+                      <div className="mt-1 font-mono text-sm font-semibold text-ink-900">
                         ¥{editor.computedTotal.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -248,10 +250,10 @@ const SnapshotPage: React.FC<Props> = ({
                 )}
                 <textarea value={ed.baseNote} onChange={(e) => setField('baseNote', e.target.value)}
                   placeholder="补充说明（可留空）" rows={2}
-                  className="w-full rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 outline-none" />
+                  className="w-full rounded-xl border border-ink-200 bg-paper-50 px-4 py-3 text-sm leading-6 text-ink-600 outline-none transition focus:border-ink-400" />
               </div>
             ) : (
-              <div className="text-sm leading-7 text-slate-600">{selectedSnapshot.note || '无备注'}</div>
+              <div className="text-sm leading-7 text-ink-600">{selectedSnapshot.note || '无备注'}</div>
             )}
           </div>
 
@@ -261,7 +263,7 @@ const SnapshotPage: React.FC<Props> = ({
                 <ActionButton label={isSaving ? '保存中…' : '保存'} icon={<Save size={15} />}
                   onClick={isEditing ? handleSaveEdit : handleSaveCreate} disabled={isSaving} variant="primary" />
                 <ActionButton label="取消" icon={<X size={15} />} onClick={cancel} variant="ghost" />
-                <div className="text-[11px] text-slate-400 xl:text-center">⌘/Ctrl+S 保存 · Esc 取消</div>
+                <div className="font-mono text-[11px] text-ink-300 xl:text-center">⌘/Ctrl+S 保存 · Esc 取消</div>
               </>
             ) : (
               <>
@@ -271,27 +273,27 @@ const SnapshotPage: React.FC<Props> = ({
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Edit/Create — add common account row */}
       {(isEditing || isCreating) && (
-        <div className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_20px_45px_-35px_rgba(15,23,42,0.3)]">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 mb-3">通用账户管理</div>
+        <Card className="p-4">
+          <SectionLabel className="mb-3">通用账户管理</SectionLabel>
           <div className="grid gap-3 md:grid-cols-[120px_120px_1fr_80px]">
             <select value={editor.commonDraftOwner} onChange={(e) => editor.setCommonDraftOwner(e.target.value as HistoricalAccountDetail['owner'])}
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
+              className={inputCls.replace('py-2.5', 'py-2')}>
               <option>小盛</option><option>大王</option><option>家庭</option>
             </select>
             <select value={editor.commonDraftCurrency} onChange={(e) => editor.setCommonDraftCurrency(e.target.value as 'CNY' | 'AUD' | 'USD')}
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none">
+              className={inputCls.replace('py-2.5', 'py-2')}>
               <option value="CNY">CNY</option><option value="AUD">AUD</option><option value="USD">USD</option>
             </select>
             <input value={editor.commonDraftName} onChange={(e) => editor.setCommonDraftName(e.target.value)}
-              placeholder="账户名称" className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none" />
+              placeholder="账户名称" className={inputCls.replace('py-2.5', 'py-2')} />
             <button type="button" onClick={editor.addCommonAccount}
-              className="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-bold text-white hover:bg-slate-800">新增</button>
+              className="rounded-xl bg-ink-800 px-3 py-2 text-sm font-medium text-paper-50 transition hover:bg-ink-900">新增</button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Detail sections */}
@@ -309,7 +311,7 @@ const SnapshotPage: React.FC<Props> = ({
             exchangeRate={editor.effectiveRate} usdRate={editor.effectiveUsdRate} />
           <div className="flex justify-end">
             <button type="button" onClick={editor.addSpecialItem}
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
+              className="rounded-xl border border-ink-200 bg-paper-50 px-3.5 py-2 text-xs font-medium text-ink-600 transition hover:border-ink-300 hover:bg-paper">
               新增一次性项目
             </button>
           </div>
@@ -325,12 +327,12 @@ const SnapshotPage: React.FC<Props> = ({
 
       {/* Change diff */}
       {overallChange && !isEditing && !isCreating && (
-        <div className="rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">对比上期 {previousSnapshot?.date}</div>
-            <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${overallChange.totalCNY >= 0 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'}`}>
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <SectionLabel>对比上期 {previousSnapshot?.date}</SectionLabel>
+            <div className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 ${overallChange.totalCNY >= 0 ? 'bg-gain-100 text-gain-600 ring-gain/20' : 'bg-loss-100 text-loss-600 ring-loss/20'}`}>
               {overallChange.totalCNY >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
-              {overallChange.totalCNY >= 0 ? '+' : ''}¥{overallChange.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
+              <span className="font-mono">{overallChange.totalCNY >= 0 ? '+' : ''}¥{overallChange.totalCNY.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}</span>
             </div>
           </div>
           <div className="grid gap-3 xl:grid-cols-3">
@@ -338,7 +340,7 @@ const SnapshotPage: React.FC<Props> = ({
             <ChangeList title="消失项目" emptyText="无消失" items={overallChange.removed} />
             <ChangeList title="余额变化" emptyText="无变化" items={overallChange.changed} />
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

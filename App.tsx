@@ -110,10 +110,10 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-8 py-6 shadow-lg">
-          <Loader2 size={20} className="animate-spin text-slate-500" />
-          <span className="font-medium text-slate-600">正在读取快照数据…</span>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex items-center gap-3 rounded-2xl border border-ink-200/60 bg-paper-50/95 px-8 py-6 shadow-ink">
+          <Loader2 size={20} className="animate-spin text-cinnabar" />
+          <span className="font-serif text-ink-600">正在研墨 · 读取快照…</span>
         </div>
       </div>
     );
@@ -121,15 +121,15 @@ const App: React.FC = () => {
 
   if (serverError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-md rounded-[28px] border border-rose-100 bg-white p-8 shadow-xl">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-ink-200/60 bg-paper-50/95 p-8 shadow-ink-lg">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-cinnabar-100 text-cinnabar-600">
             <ServerCrash size={22} />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">数据库服务未启动</h1>
-          <p className="mt-2 text-sm text-slate-500">{serverError}</p>
-          <pre className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">{`npm install\nnpm run dev`}</pre>
-          <button type="button" onClick={loadData} className="mt-4 w-full rounded-2xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800">重试</button>
+          <h1 className="font-serif text-xl font-semibold text-ink-900">数据库服务未启动</h1>
+          <p className="mt-2 text-sm text-ink-500">{serverError}</p>
+          <pre className="mt-4 rounded-xl border border-ink-200/70 bg-paper px-4 py-3 font-mono text-xs text-ink-600">{`npm install\nnpm run dev`}</pre>
+          <button type="button" onClick={loadData} className="mt-4 w-full rounded-xl bg-ink-800 py-2.5 text-sm font-medium text-paper-50 transition hover:bg-ink-900">重试</button>
         </div>
       </div>
     );

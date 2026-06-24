@@ -1,77 +1,98 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="referrer" content="no-referrer-when-downgrade" />
-    <title>OZLedger - 余额快照账本</title>
-    
-    <!-- Preconnect for fonts -->
+    <title>OZLedger · 余额快照账本</title>
+
+    <!-- Fonts: 宋朝体(标题) + 黑体(正文) + 等宽(数字) + 书法(印章) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CDN (Keep as is for simplicity) -->
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           fontFamily: {
-            sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-            display: ['Space Grotesk', 'Manrope', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+            sans: ['"Noto Sans SC"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+            serif: ['"Noto Serif SC"', '"Songti SC"', 'STSong', 'serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+            brush: ['"Ma Shan Zheng"', '"Noto Serif SC"', 'cursive'],
           },
           extend: {
             colors: {
-              'brand-navy': '#163126',
-              'brand-primary': '#2f6b52',
-              'brand-success': '#3f8f6c',
-              'brand-bg': '#f5f1e8',
-              'surface': '#ffffff',
-              'brand-paper': '#fffdf7',
-              'brand-ink': '#1f2937',
-              'brand-gold': '#c8963e',
+              // 宣纸
+              paper: { DEFAULT: '#f4efe4', 50: '#faf7f0', 100: '#f4efe4', 200: '#ebe3d2', 300: '#ddd2ba' },
+              // 墨分五色
+              ink: {
+                DEFAULT: '#2b2926',
+                50: '#f3f1ec', 100: '#e6e1d6', 200: '#cbc4b4', 300: '#a8a08f',
+                400: '#827a6c', 500: '#605a50', 600: '#48433b', 700: '#37332c', 800: '#2b2926', 900: '#1b1a16',
+              },
+              // 朱砂(印章 / 减)
+              cinnabar: { DEFAULT: '#a83a30', 50: '#f8eae7', 100: '#eecbc5', 400: '#c2554b', 500: '#a83a30', 600: '#8c2e26' },
+              // 花青 / 赭石 / 黛 (分类色)
+              qing: { DEFAULT: '#3a5a66', 100: '#dde7ea', 600: '#2d4750' },
+              zhe: { DEFAULT: '#9a6a3a', 100: '#ece0cf', 600: '#7c5530' },
+              dai: { DEFAULT: '#6b6470', 100: '#e4e1e7', 600: '#554f5b' },
+              // 石绿(增) / 损益
+              gain: { DEFAULT: '#4f7a5e', 100: '#dde9e0', 600: '#3c6149' },
+              loss: { DEFAULT: '#a83a30', 100: '#eecbc5', 600: '#8c2e26' },
             },
             boxShadow: {
-              'soft': '0 20px 45px -28px rgba(34, 48, 39, 0.28)',
-              'glow': '0 0 18px rgba(47, 107, 82, 0.18)',
-            }
-          }
-        }
-      }
+              'ink-sm': '0 1px 2px rgba(43,41,38,0.04), 0 4px 12px -8px rgba(43,41,38,0.14)',
+              'ink': '0 2px 8px -3px rgba(43,41,38,0.07), 0 18px 38px -26px rgba(43,41,38,0.22)',
+              'ink-lg': '0 4px 14px -4px rgba(43,41,38,0.08), 0 34px 64px -38px rgba(43,41,38,0.30)',
+              'seal': '0 6px 16px -8px rgba(168,58,48,0.55), inset 0 1px 0 rgba(255,255,255,0.25)',
+            },
+            letterSpacing: { widest: '0.28em' },
+          },
+        },
+      };
     </script>
+
     <style>
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+      html { scroll-behavior: smooth; }
+
       body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        background:
-          radial-gradient(circle at 15% 12%, rgba(14, 165, 233, 0.10), transparent 24%),
-          radial-gradient(circle at 85% 8%, rgba(34, 197, 94, 0.10), transparent 22%),
-          radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.06), transparent 26%),
-          linear-gradient(180deg, #f8fafc 0%, #eef2f7 54%, #f7f3eb 100%);
-        position: relative;
-      }
-      body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
+        background-color: #f4efe4;
         background-image:
-          linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-        background-size: 32px 32px;
-        mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+          radial-gradient(120% 90% at 14% 4%, rgba(58, 90, 102, 0.06), transparent 44%),
+          radial-gradient(130% 90% at 92% 96%, rgba(154, 106, 58, 0.05), transparent 46%),
+          radial-gradient(90% 70% at 50% 124%, rgba(43, 41, 38, 0.06), transparent 60%),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+        background-attachment: fixed, fixed, fixed, fixed;
       }
+
+      /* 印章质感 */
+      .seal-stamp {
+        font-family: 'Ma Shan Zheng', 'Noto Serif SC', cursive;
+        background: linear-gradient(160deg, #b4463b 0%, #a83a30 55%, #8c2e26 100%);
+        color: #f6ece2;
+        box-shadow: 0 6px 16px -8px rgba(168,58,48,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+      }
+
+      /* 一笔墨痕分隔线 */
+      .brush-rule {
+        height: 2px;
+        border: 0;
+        background: linear-gradient(90deg, transparent 0%, rgba(43,41,38,0.05) 8%, rgba(43,41,38,0.45) 35%, rgba(43,41,38,0.28) 60%, rgba(43,41,38,0.06) 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      }
+
+      *:focus-visible { outline: 2px solid rgba(168,58,48,0.5); outline-offset: 2px; }
     </style>
-    
-    <!-- Google API -->
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
-  <script type="importmap">
+
+    <script type="importmap">
 {
   "imports": {
     "react/": "https://esm.sh/react@^19.2.3/",
@@ -84,9 +105,8 @@
 }
 </script>
 </head>
-  <body class="bg-brand-bg text-slate-800 antialiased selection:bg-brand-primary selection:text-white">
+  <body class="bg-paper font-sans text-ink-800 antialiased selection:bg-cinnabar selection:text-paper-50">
     <div id="root"></div>
-    <!-- Point to the local entry file -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
