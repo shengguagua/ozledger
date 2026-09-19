@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Account, AssetSnapshot, HistoricalAccountDetail } from '../types';
 import { Archive, ArrowUpRight, Camera, History, PencilLine, RotateCcw, Trash2 } from 'lucide-react';
+import { createClientId } from '../utils/snapshot';
 
 interface Props {
   accounts: Account[];
@@ -115,7 +116,7 @@ const AssetHistoryPanel: React.FC<Props> = ({ accounts, exchangeRate, usdRate, c
     }
 
     const newSnapshot: AssetSnapshot = {
-      id: existing?.id || crypto.randomUUID(),
+      id: existing?.id || createClientId('snapshot'),
       date: snapshotDate,
       totalCNY: Number((entryMode === 'manual' ? manualTotalCNY : currentTotalCNY).toFixed(2)),
       note: `${note.trim()}${entryMode === 'manual' ? `${note.trim() ? ' | ' : ''}手工补录` : ''}`,

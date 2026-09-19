@@ -3,6 +3,7 @@ import { AssetSnapshot, AppSettings, HistoricalAccountDetail } from '../types';
 import {
   parseFoldedItemsFromNote, parseLooseNumber, buildSnapshotNote,
   calculateSnapshotTotalCNY, insertCommonDetailAtPreferredPosition, moveDetailInList,
+  createClientId,
 } from '../utils/snapshot';
 
 export type EditorMode = 'edit' | 'create' | null;
@@ -146,7 +147,7 @@ export const useSnapshotEditor = (settings: AppSettings) => {
     const accts = editor.accountDetails.map((d) => ({ ...d, balance: parseLooseNumber(editor.balances[d.accountId], d.balance) }));
     const special = editor.specialItems.map((d) => ({ ...d, balance: parseLooseNumber(editor.specialBalances[d.accountId], d.balance) }));
     return {
-      id: baseId ?? crypto.randomUUID(),
+      id: baseId ?? createClientId('snapshot'),
       date: editor.date,
       totalCNY: computedTotal,
       exchangeRate: effectiveRate,

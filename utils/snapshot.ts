@@ -1,5 +1,26 @@
 import { HistoricalAccountDetail } from '../types';
 
+// `crypto.randomUUID()` is only exposed in secure contexts (HTTPS or localhost).
+// The production ledger is currently served over HTTP, so keep ID generation
+// functional there as well instead of failing before the save request is sent.
+export const createClientId = (prefix = 'id') => {
+  const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+    return cryptoApi.randomUUID();
+  }
+
+  if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${prefix}-${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+};
+
 export const ownerOrder = ['小盛', '大王', '家庭'] as const;
 
 // 花青 / 赭石 / 黛 —— 国画矿物颜料配色
