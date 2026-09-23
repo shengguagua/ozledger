@@ -97,7 +97,19 @@ pm2 startOrReload ecosystem.config.cjs --update-env
 pm2 save
 
 echo "[deploy] checking api health"
-curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8787/api/health >/dev/null
+HEALTHY=0
+for attempt in $(seq 1 15); do
+  if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8787/api/health >/dev/null; then
+    HEALTHY=1
+    break
+  fi
+  sleep 2
+done
+if [[ "${HEALTHY}" != "1" ]]; then
+  echo "[deploy] api health check failed after waiting for startup"
+  pm2 logs ozledger-api --lines 40 --nostream || true
+  exit 1
+fi
 
 PUBLIC_IP="$(curl --fail --silent --show-error --max-time 10 https://api.ipify.org || true)"
 if [[ -n "${PUBLIC_IP}" ]]; then
