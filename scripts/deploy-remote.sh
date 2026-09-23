@@ -16,6 +16,13 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# Load the server-only database settings for the pre-deploy snapshot. The
+# file is never copied from CI and remains on the server.
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
 if ! command -v pm2 >/dev/null 2>&1; then
   echo "[deploy] pm2 is not installed"
   exit 1
