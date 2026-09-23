@@ -99,4 +99,9 @@ pm2 save
 echo "[deploy] checking api health"
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8787/api/health >/dev/null
 
+PUBLIC_IP="$(curl --fail --silent --show-error --max-time 10 https://api.ipify.org || true)"
+if [[ -n "${PUBLIC_IP}" ]]; then
+  echo "[deploy] public url: http://${PUBLIC_IP}/"
+fi
+
 echo "[deploy] done"
