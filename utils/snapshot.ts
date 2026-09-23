@@ -93,21 +93,35 @@ export const toCNY = (amount: number, currency: string, rate: number, usdRate: n
   return amount;
 };
 
-export const calculateSignedTotal = (rows: HistoricalAccountDetail[]) => rows.reduce((s, d) => s + d.balance, 0);
+/**
+ * Credit-card and Huabei balances are entered as positive outstanding debt,
+ * but must reduce net assets. Keep this rule in one place so the editor and
+ * reports cannot silently disagree.
+ */
+export const isLiabilityDetail = (detail: Pick<HistoricalAccountDetail, 'type'>) =>
+  detail.type === 'credit' || detail.type === 'huabei';
+
+export const calculateSignedTotal = (rows: HistoricalAccountDetail[]) =>
+  rows.reduce((s, d) => s + (isLiabilityDetail(d) ? -Math.abs(d.balance) : d.balance), 0);
 
 export const calculateSignedTotalCNYEquivalent = (rows: HistoricalAccountDetail[], rate: number, usdRate: number) =>
-  rows.reduce((s, d) => s + toCNY(d.balance, d.currency, rate, usdRate), 0);
+  rows.reduce((s, d) => s + signedCNYValue(d, rate, usdRate), 0);
+
+export const signedCNYValue = (detail: HistoricalAccountDetail, rate: number, usdRate: number) => {
+  const value = toCNY(detail.balance, detail.currency, rate, usdRate);
+  return isLiabilityDetail(detail) ? -Math.abs(value) : value;
+};
 
 export const calculateSnapshotTotalCNY = (
   accountDetails: HistoricalAccountDetail[],
   specialItems: HistoricalAccountDetail[],
   rate: number, usdRate: number,
-) => Number(([...accountDetails, ...specialItems].reduce((s, d) => s + toCNY(d.balance, d.currency, rate, usdRate), 0)).toFixed(2));
+) => Number(([...accountDetails, ...specialItems].reduce((s, d) => s + signedCNYValue(d, rate, usdRate), 0)).toFixed(2));
 
 export const formatLocalDateTime = (value?: string) =>
   value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '尚未写入';
 
-export const isSubtractingDetail = (d: HistoricalAccountDetail) => d.balance < 0;
+export const isSubtractingDetail = (d: HistoricalAccountDetail) => d.balance < 0 || isLiabilityDetail(d);
 
 export const buildSnapshotNote = (base: string, foldedItems: HistoricalAccountDetail[]) => {
   const clean = base.trim();

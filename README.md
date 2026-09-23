@@ -1,16 +1,30 @@
 # OZLedger
 
-OZLedger 现在是一个适合部署在 `Mac mini` 上的余额快照账本：
+OZLedger 是部署在腾讯云 Linux 服务器上的余额快照账本：
 
 - 前端：React + Vite
 - 后端：Node + Express
-- 数据库：SQLite
+- 生产数据库：MySQL（与 API 同机）
+- 本地开发数据库：SQLite
 
 核心使用方式不是逐笔流水，而是：
 
 1. 更新各账户当前余额
 2. 保存某个日期的快照
 3. 对比任意两个时间点的资产变化
+
+## 当前生产架构
+
+生产环境的配置事实以服务器 `/opt/ozledger-app/.env` 为准。当前已确认：
+
+```env
+DB_CLIENT=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=ozledger
+```
+
+完整架构和数据安全规则见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。过期配置只记录在 [docs/config-history.md](docs/config-history.md)，不会再作为运行配置使用。
 
 ## 数据存储
 
@@ -22,25 +36,27 @@ data/ozledger.sqlite
 
 你可以继续使用 JSON 做备份和恢复，但主存储已经不是 Google Sheets。
 
-现在这套后端默认还使用本地 SQLite，但已经加上了：
+本地未设置 `DB_CLIENT=mysql` 时使用 SQLite；生产环境必须显式使用 MySQL。系统已经加上了：
 
 - 保存前自动备份
 - 服务端重算快照总资产，避免前端手填总额和明细不一致
 - 基于 `lastSavedAt` 的防覆盖保护，避免旧页面把新数据顶掉
 - 更严格的输入校验，防止无效汇率和坏数据写入库
+- 生产 MySQL 连接失败时拒绝写入，不静默切换到 SQLite
+- 每次生产部署前自动导出一份数据备份
 
-## 腾讯云数据库目标
+## 数据库配置
 
-当前项目支持通过 `.env` 切到 MySQL。示例见：
+当前项目支持通过 `.env` 使用 MySQL。示例见：
 
 ```bash
 .env.example
 ```
 
-当前项目里已经把腾讯云数据库目标主机预留成：
+生产环境使用同一台腾讯云服务器上的 MySQL，数据库主机为本机回环地址：
 
 ```bash
-OZ_DB_HOST=43.136.32.239
+DB_HOST=127.0.0.1
 ```
 
 如果设置：
@@ -49,7 +65,7 @@ OZ_DB_HOST=43.136.32.239
 DB_CLIENT=mysql
 ```
 
-后端会自动切到 MySQL，并在目标库里自动建表。没有设置时，默认继续使用本地 SQLite。
+后端会自动切到 MySQL，并在目标库里自动建表。`ALLOW_SQLITE_FALLBACK` 仅允许本地开发显式开启，生产必须保持 `false`。
 
 ## 本地开发
 
@@ -72,26 +88,15 @@ npm run dev
 
 ## 生产运行
 
-只启动后端：
+生产不在本地启动，统一通过部署脚本在腾讯云服务器构建和重启。
+
+生产环境请务必设置 `ALLOWED_ORIGINS`，例如：
 
 ```bash
-npm run start
+ALLOWED_ORIGINS=https://your-ledger-domain.example
 ```
 
-前端静态资源构建：
-
-```bash
-npm run build
-```
-
-## 适合 Mac mini 的部署方式
-
-推荐：
-
-1. `npm run build`
-2. `npm run start`
-3. 用 `pm2` 守护 Node 服务
-4. 用 `nginx` 反代前端静态资源和 `/api`
+系统会在每次写入前自动生成备份。不要删除 `data/backups`；如果 MySQL 连接失败，系统可能回退到本地 SQLite，部署时应同时监控日志中的存储引擎状态。
 
 ## 自动化发布
 
@@ -102,7 +107,7 @@ npm run build
 3. GitHub Actions 触发：
    - 先跑 `CI`
    - 再通过 SSH 登录腾讯云 Linux
-4. 服务器执行 [scripts/deploy-remote.sh](/Users/melon/Documents/GitHub/ozledger/scripts/deploy-remote.sh)
+4. 服务器执行 [scripts/deploy-remote.sh](scripts/deploy-remote.sh)
 5. 自动完成：
    - `git fetch`
    - `git reset --hard origin/main`
@@ -114,12 +119,14 @@ npm run build
 
 相关文件：
 
-- [CI workflow](/Users/melon/Documents/GitHub/ozledger/.github/workflows/ci.yml)
-- [Deploy workflow](/Users/melon/Documents/GitHub/ozledger/.github/workflows/deploy.yml)
-- [PM2 config](/Users/melon/Documents/GitHub/ozledger/ecosystem.config.cjs)
-- [Remote deploy script](/Users/melon/Documents/GitHub/ozledger/scripts/deploy-remote.sh)
-- [Nginx example](/Users/melon/Documents/GitHub/ozledger/deploy/nginx.ozledger.conf.example)
-- [Deploy notes](/Users/melon/Documents/GitHub/ozledger/deploy/README.md)
+- [CI workflow](.github/workflows/ci.yml)
+- [Deploy workflow](.github/workflows/deploy.yml)
+- [PM2 config](ecosystem.config.cjs)
+- [Remote deploy script](scripts/deploy-remote.sh)
+- [Nginx example](deploy/nginx.ozledger.conf.example)
+- [Deploy notes](deploy/README.md)
+
+部署脚本会先请求生产 API 导出完整数据；备份失败时会中止发布。`.env` 不在 SCP 文件列表中，因此不会被仓库内容覆盖。
 
 ## 当前功能
 

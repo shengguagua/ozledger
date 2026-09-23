@@ -7,7 +7,7 @@ const dataDir = path.resolve(process.cwd(), 'data');
 const backupDir = path.join(dataDir, 'backups');
 const changeLogPath = path.join(dataDir, 'change-log.md');
 const dbClient = process.env.DB_CLIENT || 'mysql';
-export const dbTargetHost = process.env.DB_HOST || process.env.OZ_DB_HOST || '43.136.32.239';
+export const dbTargetHost = process.env.DB_HOST || process.env.OZ_DB_HOST || '127.0.0.1';
 const dbPort = Number(process.env.DB_PORT || 3306);
 const dbUser = process.env.DB_USER || 'ozledger';
 const dbPassword = process.env.DB_PASSWORD || '';
@@ -174,8 +174,24 @@ const toCNY = (amount, currency, exchangeRate, usdRate) => {
   return amount;
 };
 
+const isLiabilityDetail = (detail) => detail.type === 'credit' || detail.type === 'huabei';
+const parseFoldedItemsFromNote = (note = '') => {
+  const marker = '已折叠一次性项目:';
+  const index = note.indexOf(marker);
+  if (index === -1) return [];
+  return note.slice(index + marker.length).trim().split(/[；;]+/).map((item, i) => {
+    const match = item.trim().match(/^(小盛|大王|家庭)-(.+)\s(-?\d+(?:\.\d+)?)\s(AUD|CNY|USD)$/);
+    if (!match) return null;
+    const [, owner, name, amount, currency] = match;
+    return { accountId: `folded-${owner}-${i}-${name}`, name, owner, type: 'pending', currency, balance: Number(amount) };
+  }).filter(Boolean);
+};
+
 const computeSnapshotTotal = (details, exchangeRate, usdRate) =>
-  roundMoney(details.reduce((sum, detail) => sum + toCNY(detail.balance, detail.currency, exchangeRate, usdRate), 0));
+  roundMoney(details.reduce((sum, detail) => {
+    const value = toCNY(detail.balance, detail.currency, exchangeRate, usdRate);
+    return sum + (isLiabilityDetail(detail) ? -Math.abs(value) : value);
+  }, 0));
 
 const normalizeSnapshot = (snapshot) => {
   if (!snapshot?.id) throw new ValidationError('快照缺少 id');
@@ -188,8 +204,10 @@ const normalizeSnapshot = (snapshot) => {
   const accountDetails = (snapshot.accountDetails || [])
     .map(normalizeDetail)
     .sort((a, b) => a.sortIndex - b.sortIndex || a.owner.localeCompare(b.owner) || a.name.localeCompare(b.name));
-  const totalCNY = accountDetails.length > 0
-    ? computeSnapshotTotal(accountDetails, exchangeRate, usdRate)
+  const foldedItems = parseFoldedItemsFromNote(snapshot.note || '');
+  const totalDetails = [...accountDetails, ...foldedItems];
+  const totalCNY = totalDetails.length > 0
+    ? computeSnapshotTotal(totalDetails, exchangeRate, usdRate)
     : roundMoney(snapshot.totalCNY);
 
   if (!Number.isFinite(totalCNY)) {
@@ -223,6 +241,13 @@ const normalizeTransaction = (transaction) => {
   if (!transaction?.date) throw new ValidationError(`交易缺少日期（${transaction.id}）`);
   const amount = Number(transaction.amount);
   if (!Number.isFinite(amount)) throw new ValidationError(`交易金额不是有效数字（${transaction.id}）`);
+  if (amount <= 0) throw new ValidationError(`交易金额必须大于 0（${transaction.id}）`);
+  if (!['CNY', 'AUD', 'USD'].includes(transaction.currency)) throw new ValidationError(`交易币种无效（${transaction.id}）`);
+  if (!['expense', 'income', 'transfer'].includes(transaction.type)) throw new ValidationError(`交易类型无效（${transaction.id}）`);
+  if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(transaction.date)) throw new ValidationError(`交易日期格式无效（${transaction.id}）`);
+  if (transaction.type === 'transfer' && (!transaction.toAccountId || transaction.toAccountId === transaction.accountId)) {
+    throw new ValidationError(`转账目标账户无效（${transaction.id}）`);
+  }
   return {
     ...transaction,
     amount: roundMoney(amount),

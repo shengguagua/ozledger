@@ -6,8 +6,15 @@ import { ConflictError, ValidationError, exportBackup, getBootstrapData, getStor
 const app = express();
 const port = Number(process.env.PORT || 8787);
 
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
+app.use(cors({
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+}));
 app.use(express.json({ limit: '5mb' }));
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  console.warn('ALLOWED_ORIGINS is not configured; API CORS is currently open. Set it before public deployment.');
+}
 
 app.get('/api/health', async (_req, res) => {
   const status = await getStorageStatus();

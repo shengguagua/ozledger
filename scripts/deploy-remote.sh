@@ -21,6 +21,20 @@ if ! command -v pm2 >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "[deploy] creating pre-deploy data export"
+BACKUP_DIR="${APP_DIR}/data/backups"
+mkdir -p "${BACKUP_DIR}"
+BACKUP_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP_TMP="${BACKUP_DIR}/.pre-deploy-${BACKUP_STAMP}.json.tmp"
+BACKUP_FILE="${BACKUP_DIR}/pre-deploy-${BACKUP_STAMP}.json"
+if ! curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8787/api/backup/export > "${BACKUP_TMP}"; then
+  echo "[deploy] unable to export current data; refusing to deploy"
+  exit 1
+fi
+mv "${BACKUP_TMP}" "${BACKUP_FILE}"
+chmod 600 "${BACKUP_FILE}"
+echo "[deploy] backup saved: ${BACKUP_FILE}"
+
 echo "[deploy] installing dependencies"
 # Production currently uses MySQL as the primary store, so we skip native
 # install scripts to avoid blocking deploys on optional SQLite fallback builds.
@@ -45,5 +59,8 @@ find . -name '._*' -delete
 echo "[deploy] restarting api"
 pm2 startOrReload ecosystem.config.cjs --update-env
 pm2 save
+
+echo "[deploy] checking api health"
+curl --fail --silent --show-error --max-time 20 http://127.0.0.1:8787/api/health >/dev/null
 
 echo "[deploy] done"

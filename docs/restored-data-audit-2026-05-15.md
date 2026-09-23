@@ -1,7 +1,7 @@
 # Restored Data Audit
 
 生成时间：2026-05-15  
-数据库：[data/ozledger.sqlite](/Users/melon/Documents/GitHub/ozledger/data/ozledger.sqlite)
+数据库：当时使用的本地 SQLite 文件 `data/ozledger.sqlite`。当前生产数据已迁移到腾讯云同机 MySQL，详见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 总览
 

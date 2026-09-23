@@ -1,13 +1,23 @@
 let storageModule;
 let currentStorageName = 'sqlite';
 
+// Production must fail closed if MySQL is unavailable. Falling back to a
+// second database can make a successful-looking write disappear from the
+// real ledger. SQLite fallback is opt-in for local development only.
+const allowSqliteFallback = process.env.NODE_ENV !== 'production'
+  && process.env.ALLOW_SQLITE_FALLBACK === 'true';
+
+if (process.env.NODE_ENV === 'production' && process.env.DB_CLIENT !== 'mysql') {
+  throw new Error('Production requires DB_CLIENT=mysql; refusing to run against SQLite.');
+}
+
 const isMysqlConnectionError = (error) => {
   const code = error?.code;
   return code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'ENOTFOUND' || code === 'EHOSTUNREACH';
 };
 
 const switchToSqliteFallback = async (error) => {
-  if (currentStorageName === 'sqlite') throw error;
+  if (currentStorageName === 'sqlite' || !allowSqliteFallback) throw error;
   console.warn(
     `mysql runtime unavailable, falling back to sqlite: ${error instanceof Error ? error.message : error}`
   );
@@ -24,6 +34,7 @@ if (process.env.DB_CLIENT === 'mysql') {
     storageModule = await import('./mysql-db.js');
     currentStorageName = 'mysql';
   } catch (error) {
+    if (!allowSqliteFallback) throw error;
     console.warn(
       `mysql storage unavailable, falling back to sqlite: ${error instanceof Error ? error.message : error}`
     );
