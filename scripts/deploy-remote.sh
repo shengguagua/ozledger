@@ -112,6 +112,12 @@ if [[ "${HEALTHY}" != "1" ]]; then
 fi
 
 PUBLIC_IP="$(curl --fail --silent --show-error --max-time 10 https://api.ipify.org || true)"
+if [[ -z "${PUBLIC_IP}" ]]; then
+  PUBLIC_IP="$(curl --fail --silent --show-error --max-time 5 http://metadata.tencentyun.com/latest/meta-data/public-ipv4 || true)"
+fi
+if [[ -z "${PUBLIC_IP}" ]]; then
+  PUBLIC_IP="$(curl --fail --silent --show-error --max-time 5 http://metadata.tencentyun.com/latest/meta-data/public-ip || true)"
+fi
 if [[ -n "${PUBLIC_IP}" ]]; then
   echo "[deploy] public url: http://${PUBLIC_IP}/"
 fi
